@@ -5,8 +5,8 @@
 get_prior_minnesota <- function(y, p, intercept=TRUE, ...){
   # lambda1=0.2, lambda2=0.5, lambda3=1, lambda4=2
   arguments <- eval(substitute(alist(...)))
-  lambda1 <- ifelse(is.null(arguments$lambda1), 0.2, arguments$lambda1)
-  lambda2 <- ifelse(is.null(arguments$lambda2), 0.5, arguments$lambda2)
+  lambda1 <- ifelse(is.null(arguments$lambda1), 0.5, arguments$lambda1)
+  lambda2 <- ifelse(is.null(arguments$lambda2), 0.2, arguments$lambda2)
   lambda3 <- ifelse(is.null(arguments$lambda3), 1, arguments$lambda3)
   lambda4 <- ifelse(is.null(arguments$lambda4), 2, arguments$lambda4)
 
@@ -38,8 +38,9 @@ get_prior_minnesota <- function(y, p, intercept=TRUE, ...){
 
   if (p > 0){
     for(ii in 1:K){
-      Ylagi         <- stats::embed(y[,ii],dimension = p + 1)[,-1]
-      Yi            <- y[(p + 1):t_max,ii]
+      var_i = as.numeric(na.exclude(y[,ii]))
+      Ylagi         <- stats::embed( var_i ,dimension = p + 1)[,-1]
+      Yi            <- var_i[(p + 1):length(var_i)]
       arest         <- stats::lm(Yi~Ylagi)
       sigmasq[ii] <- summary(arest)$sigma^2 # the square root of the estimated variance of the random error sigma^2 = 1/(n-p) Sum(w[i] R[i]^2)
     }
@@ -83,7 +84,7 @@ get_prior_minnesota <- function(y, p, intercept=TRUE, ...){
         if(ii==kk){
           Vi[indx] <- lambda1/(jj^lambda4)
         } else{
-          Vi[indx] <- (lambda1 * lambda2)/(jj ^ lambda4) *(sigmasq[ii] / sigmasq[kk])
+          Vi[indx] <- (lambda2)/(jj ^ lambda4) *(sigmasq[ii] / sigmasq[kk])
         }
       }
     }
@@ -206,13 +207,7 @@ get_prior <- function(y, p, priorStyle = c("Minnesota"),
     prior_collect$nu_gam_a = 2
     prior_collect$nu_gam_b = 0.1
   }
-  #Skew.Student
-  if (dist =="Skew.Student" |
-      dist =="MST" | dist =="OST"|
-      dist =="dynSkew.Student" | dist =="OrthSkewNorm"| dist =="dynOST"){
-    prior_collect$gamma_prior = rep(0, K)
-    prior_collect$V_gamma_prior = diag(K)
-  }
+ 
   prior_collect$t_max <- nrow(y)
   prior_collect$dist <- dist
   prior_collect$SV <- SV
@@ -238,10 +233,8 @@ get_prior <- function(y, p, priorStyle = c("Minnesota"),
 #'
 get_init <- function(prior, samples = 1100, burnin = 100, thin = 1){
   dist = prior$dist
-  if (!(dist %in% c("Gaussian","Student","Skew.Student",
-                    "MT","MST",
-                    "OT","OST",
-                    "dynSkew.Student", "OrthSkewNorm", "dynOST") ))
+  if (!(dist %in% c("Gaussian","Student",
+                    "MT","OT") ))
     stop("dist is not implemented.")
 
   SV = prior$SV
@@ -267,19 +260,12 @@ get_init <- function(prior, samples = 1100, burnin = 100, thin = 1){
 
   #Student
   if (dist !="Gaussian"){
-    inits$nu = 4 + rgamma(1, shape = 2, rate = 0.1)
+    inits$nu = 2 + rgamma(1, shape = 2, rate = 0.1)
   }
-  #Skew.Student
-  if (dist =="Skew.Student" |
-      dist =="MST" | dist =="OST"|
-      dist =="dynSkew.Student" | dist =="OrthSkewNorm"| dist =="dynOST"){
-    inits$gamma = rep(0.001,K) + 0.1 *rnorm(K)
-  }
+
   #MT
-  if (dist == "MT" | dist =="OT" |
-      dist == "MST" | dist == "OST" |
-      dist == "dynMST"| dist == "dynOST"){
-    inits$nu = 4 + rgamma(K, shape = 2, rate = 0.1)
+  if (dist == "MT" | dist =="OT"){
+    inits$nu = 2 + rgamma(K, shape = 2, rate = 0.1)
   }
   inits$nu <- ifelse(inits$nu > 100, 50, inits$nu)
 
