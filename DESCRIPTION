@@ -1,0 +1,36 @@
+Package: MFVART
+Type: Package
+Title: Bayesian Mixed frequency VAR with fat tails
+Version: 0.0.1
+Author: c(
+    person("Nguyen", "Hoang", role = c("aut", "cre"), email = "hoang.nguyen@liu.se"),
+    person("Karlsson", "Sune", role = "aut" , email = "Sune.Karlsson@oru.se") )
+Maintainer: Hoang Nguyen <hoang.nguyen@liu.se>
+Description: Bayesian VAR with Stochastic volatility and fat tails
+License: License: GPL (>= 2)
+Encoding: UTF-8
+LazyData: true
+Imports:
+    Rcpp (>= 0.12.8), RcppArmadillo
+Depends:
+    R (>= 3.5.0),
+    Rcpp,
+    matrixcalc,
+    Matrix,
+    coda,
+    invgamma,
+    mvnfast,
+    fitdistrplus,
+    KernSmooth,
+    ash,
+    ghyp,
+    stochvol,
+    truncnorm,
+    magic,
+    tmvnsim,
+    GIGrvg
+LinkingTo: Rcpp, RcppArmadillo
+RoxygenNote: 7.2.3
+Suggests: knitr,
+    rmarkdown
+VignetteBuilder: knitr
