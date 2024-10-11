@@ -2,7 +2,7 @@
 #' Forecast future observations of BVAR model
 #'
 #' This function returns a forecast future observations of BVAR-SV-fatTail model.
-#' @param Chain The fatBVARSV object from command BVAR.
+#' @param Chain The MFVART object from command BVAR.
 #' @param t_pred The time prediction horizon.
 #' @return The list of forecast future observations of BVAR model
 #' @export
@@ -206,7 +206,7 @@ get_forecast <- function(Chain, y0 = NULL, t_pred = 12, t_current, Nfsample = NU
 #' Forecast density of future observations of BVAR model
 #'
 #' This function returns a forecast density of future observations of BVAR-SV-fatTail model.
-#' @param Chain The fatBVARSV object from command BVAR.
+#' @param Chain The MFVART object from command BVAR.
 #' @param y_current The current values of y.
 #' @param y_obs_future The future observable values of y.
 #' @param t_pred The time prediction horizon.

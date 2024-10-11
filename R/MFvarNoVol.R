@@ -47,7 +47,7 @@ BMFVAR.novol <- function(y, K, p, dist, y0 = NULL, idq = rep(0,K), freq = 3, pri
                 prior = prior,
                 inits = inits,
                 esttime = elapsedTime)
-    class(out) <- c("fatBVARSV")
+    class(out) <- c("MFVART")
 
   } else {
     warning("prior$SV is TRUE")
@@ -60,9 +60,10 @@ BMFVAR.novol <- function(y, K, p, dist, y0 = NULL, idq = rep(0,K), freq = 3, pri
 BMFVAR.Gaussian.novol <- function(y, K, p, y0 = NULL, idq, freq, prior = NULL, inits = NULL){
   # Init regressors in the right hand side
   t_max <- nrow(y)
-  yt = t(y)
-  xt <- makeRegressor(y, y0, t_max, K, p)
-
+  y_raw <- y
+  yt_vec <- vec(t(y))
+  yobs_vec <- na.exclude(yt_vec)
+  
   # Init prior and initial values
   m = K * p + 1
   if (is.null(prior)){
@@ -86,8 +87,6 @@ BMFVAR.Gaussian.novol <- function(y, K, p, y0 = NULL, idq, freq, prior = NULL, i
   samples <- inits$samples
   A <- inits$A0
   B <- inits$B0
-  b_intercept = B[,1]
-  B_transpose =  B[,2:ncol(B)]
   
   sigma <- inits$sigma
   # Sigma <- solve(inits$A0) %*% diag(sigma, nrow = length(sigma))
@@ -96,26 +95,42 @@ BMFVAR.Gaussian.novol <- function(y, K, p, y0 = NULL, idq, freq, prior = NULL, i
   V_b_prior_inv <- solve(V_b_prior)
   # new precompute
   theta.prior.precmean <- V_b_prior_inv %*% b_prior
-
+  S_select <- Make_SectMat(y)
+  n_obs <- sum(!is.na(y_raw))
+  n_miss <- sum(is.na(y_raw))
+  S_obs <- S_select$S_obs
+  S_miss <- S_select$S_miss
+    
   # Output
   mcmc <- matrix(NA, nrow = m*K + 0.5*K*(K-1) + K,
                  ncol = (samples - inits$burnin)%/% inits$thin)
+  My_miss <- matrix(NA, nrow = n_miss,
+                    ncol = (samples - inits$burnin)%/% inits$thin)
+                
   for (j in c(1:samples)){
     
+    # # Sample y missing
+    b_intercept = B[,1]
+    H_B <- Make_HB(B, K, p ,t_max)
+    c_B <- Make_cB(y0, B, K, p ,t_max)
+    IA <- kronecker(Diagonal(t_max), as(A,Class = "TsparseMatrix") )
+    c_const <- IA %*% c_B
+    IAH <- IA %*% H_B
+    G_obs <-  IAH %*% S_obs
+    G_miss <-  IAH %*% S_miss
+    K_y_miss <- Matrix::t(G_miss) %*% Diagonal(t_max*K, 1/sigma^2) %*% G_miss
+    b_y_miss <- Matrix::t(G_miss) %*% Diagonal(t_max*K, 1/sigma^2) %*% ( c_const - G_obs %*% yobs_vec)
     
-    yt = t(y)
-    xt <- makeRegressor(y, y0, t_max, K, p)
+    U.chol <- Matrix::chol( K_y_miss )
+    ymiss_vec <- backsolve(U.chol, backsolve(U.chol, b_y_miss,
+                                upper.tri = T, transpose = T ) + rnorm(n_miss) )
+    yt_vec <- S_obs%*% yobs_vec + S_miss%*% ymiss_vec
     
-    # # Sample B
-    # V_b_post_inv <- V_b_prior_inv + kronecker(xt %*% t(xt),Sigma2_inv)
-    # b_post <- kronecker(xt, Sigma2_inv) %*% vec(yt)
-    #
-    # V_b_post <- solve(V_b_post_inv)
-    # b_post <- V_b_post %*% ( solve(V_b_prior) %*% b_prior + b_post)
-    # b_sample <- b_post + t(chol(V_b_post)) %*% rnorm(m*K)
-    # B <- Vec_to_Mat(b_sample, K,p)
-
     # sample B
+    yt = matrix(yt_vec, nrow = K)
+    y = t(yt)
+    xt <- makeRegressor( y, y0, t_max, K, p)
+
     A.tmp <- diag(1/sigma, K) %*% A
     y.tilde <- as.vector( A.tmp %*% yt )
     x.tilde <- kronecker( t(xt), A.tmp )
@@ -130,7 +145,6 @@ BMFVAR.Gaussian.novol <- function(y, K, p, y0 = NULL, idq, freq, prior = NULL, i
     sigma2 <- rep(0,K)
     u_ort <- A %*% (yt - B %*%xt)
     sigma_post_a <- sigma0_T0 + rep(t_max,K)
-#    sigma_post_b <- sigma0_S0 + apply(u_ort^2, 1, sum)
     sigma_post_b <- sigma0_S0 + rowSums(u_ort^2)
     for (i in c(1:K)){
       sigma2[i] <- rinvgamma(1, shape = sigma_post_a[i] * 0.5, rate = sigma_post_b[i] * 0.5)
@@ -158,11 +172,9 @@ BMFVAR.Gaussian.novol <- function(y, K, p, y0 = NULL, idq, freq, prior = NULL, i
     A <- t(A_post)
     diag(A) <- 1
 
-    # Sigma <- solve(A) %*% diag(sigma, nrow = length(sigma))
-    # Sigma2 <- Sigma %*% t(Sigma)
-    # Sigma2_inv <- solve(Sigma2)
     if ((j > inits$burnin) & (j %% inits$thin == 0))
       mcmc[, (j - inits$burnin) %/% inits$thin] <- c(b_sample, a_sample, sigma)
+      My_miss[, (j - inits$burnin) %/% inits$thin] <- ymiss_vec
     if (j %% 1000 == 0) { cat(" Iteration ", j, " \n")}
   }
   nameA <- matrix(paste("a", reprow(c(1:K),K), repcol(c(1:K),K), sep = "_"), ncol = K)
@@ -171,7 +183,9 @@ BMFVAR.Gaussian.novol <- function(y, K, p, y0 = NULL, idq, freq, prior = NULL, i
                         sprintf("B%d_%d_%d",reprow(c(1:p),K*K), rep(repcol(c(1:K),K), p), rep(reprow(c(1:K),K), p)),
                         nameA,
                         paste("sigma",c(1:K), sep = ""))
-  return(as.mcmc(t(mcmc)))
+  return(list( param = as.mcmc(t(mcmc)),
+               y_miss = as.mcmc(t(My_miss))
+         ))
 }
 
 ###########################################################################

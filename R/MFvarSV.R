@@ -51,7 +51,7 @@ BVAR.SV <- function(y, K, p, dist, y0 = NULL, prior = NULL, inits = NULL){
                 prior = prior,
                 inits = inits,
                 esttime = elapsedTime)
-    class(out) <- c("fatBVARSV")
+    class(out) <- c("MFVART")
     return(out)
   } else {
     warning("prior$SV is TRUE")

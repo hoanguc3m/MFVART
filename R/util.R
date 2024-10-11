@@ -31,7 +31,7 @@ getmix <- function(){
 ##########################################################################
 #' @export
 makeRegressor <- function(y, y0, t_max, K, p){
-  xt <- NULL
+  # xt <- matrix(NA, nrow = K * p, ncol = t_max)
   yt = t(y)
 
   if (is.null(y0)){
@@ -41,13 +41,22 @@ makeRegressor <- function(y, y0, t_max, K, p){
   }
 
   if (p > 0){
-    y0 <- rbind(y0, y)
-    for (i in c(1:p)){
-      xt <- cbind(xt, rbind(1, vec( as.matrix( t(y0)[,(p+i-1):i]))) )
-    }
-    for (i in c( p:(t_max-1))){
-      xt <- cbind(xt, rbind(1, vec( as.matrix( yt[,i:(i-p+1)]))) )
-    }
+    # y0 <- rbind(y0, y[1:p,])
+    # for (i in 1:p) {
+    #   xt[, i] <- as.vector(t(y0)[, (p+i-1):i])
+    # }
+    # for (i in (p+1):t_max) {
+    #   xt[, i] <- as.vector(yt[, (i-1):(i-p)])
+    # }
+    
+    y0 <- t(rbind(y0, y))
+    # for (i in 1:t_max) {
+    #   xt[, i] <- as.vector(y0[, (p+i-1):i])
+    # }
+    
+    id_col <- t(sapply(p:1, FUN = function(i) i:(i+t_max-1 )))
+    xt <- matrix(y0[, id_col], ncol = t_max)
+    xt <- rbind( rep(1,t_max), xt)
   } else {
     xt <- matrix(1, nrow = 1, ncol = t_max)
   }
@@ -203,11 +212,11 @@ sample_h_mod <- function(ytilde, sigma_h = 0.0001*diag(K), h0_mean = rep(0,K),
 ##########################################################################
 
 #' @export
-plot.fatBVARSV <- function(fatBVARSVobj, element = NULL){
+plot.MFVART <- function(MFVARTobj, element = NULL){
   if (is.null(element)) {
-    plot(fatBVARSVobj$mcmc)
+    plot(MFVARTobj$mcmc)
   } else {
-    plot(get_post.fatBVARSV(fatBVARSVobj, element))
+    plot(get_post.MFVART(MFVARTobj, element))
   }
 }
 
@@ -217,7 +226,7 @@ plot.fatBVARSV <- function(fatBVARSVobj, element = NULL){
 #' Get Posterior samples of BVAR model
 #'
 #' This function returns Posterior samples of BVAR-SV-fatTail model.
-#' @param obj The Chain/mcmc obtained by fatBVARSVobj$mcmc
+#' @param obj The Chain/mcmc obtained by MFVARTobj$mcmc
 #' @param element The name of parameters.
 #' @return The Posterior samples of BVAR-SV-fatTail model in mcmc object
 #' @export
@@ -230,7 +239,7 @@ get_post <- function(obj, element = NULL, ...) {
 }
 
 #' @export
-get_post.fatBVARSV <- function(obj, element = NULL){
+get_post.MFVART <- function(obj, element = NULL){
   if (is.null(element)) {
     return(obj$mcmc)
   } else {
@@ -273,221 +282,99 @@ get_post.mcmc <- function(obj, element = NULL){
   }
 }
 
-
-PF_GaussianSV <- function(ytilde, h0, sigma_h, noParticles = 1000) {
-
-  t_len <- length(ytilde) - 1
-
-  particles <- matrix(0, nrow = noParticles, ncol = t_len + 1)
-  ancestorIndices <- matrix(0, nrow = noParticles, ncol = t_len + 1)
-  weights <- matrix(1, nrow = noParticles, ncol = t_len + 1)
-  normalisedWeights <- matrix(0, nrow = noParticles, ncol = t_len + 1)
-  xHatFiltered <- matrix(0, nrow = t_len, ncol = 1)
-  logLikelihood <- 0
-
-  ancestorIndices[, 1] <- 1:noParticles
-  normalisedWeights[, 1] = 1 / noParticles
-
-  # Generate initial state
-  particles[, 1] <- h0 + rnorm(noParticles, mean = 0, sd = sigma_h^0.5)
-
-  for (t in 2:(t_len + 1)) {
-    # Resample ( multinomial )
-    newAncestors <- sample(noParticles, replace = TRUE, prob = normalisedWeights[, t - 1])
-    ancestorIndices[, 1:(t - 1)] <- ancestorIndices[newAncestors, 1:(t - 1)]
-    ancestorIndices[, t] <- newAncestors
-
-    # Propagate
-    part1 <- particles[newAncestors, t - 1]
-    particles[, t] <- part1 + rnorm(noParticles, mean = 0, sd = sigma_h^0.5)
-
-    # Compute weights
-    yhatMean <- 0
-    yhatVariance <- exp(particles[, t] / 2)
-    weights[, t] <- dnorm(ytilde[t - 1], yhatMean, yhatVariance, log = TRUE)
-
-    maxWeight <- max(weights[, t])
-    weights[, t] <- exp(weights[, t] - maxWeight)
-
-    sumWeights <- sum(weights[, t])
-    normalisedWeights[, t] <- weights[, t] / sumWeights
-
-    # Estimate the log-likelihood
-    logLikelihood <- logLikelihood + maxWeight + log(sumWeights) - log(noParticles)
-
-  }
-
-  # Sample the state estimate using the weights at t=t_len
-  ancestorIndex  <- sample(noParticles, 1, prob = normalisedWeights[, t_len])
-  xHatFiltered <- particles[cbind(ancestorIndices[ancestorIndex, ], 1:(t_len + 1))]
-
-  list(xHatFiltered = xHatFiltered, logLikelihood = logLikelihood)
-}
-
-PF_uniStudentSV <- function(ytilde, h0, sigma_h, nu, noParticles = 1000) {
-
-  t_len <- length(ytilde) - 1
-
-  particles <- matrix(0, nrow = noParticles, ncol = t_len + 1)
-  ancestorIndices <- matrix(0, nrow = noParticles, ncol = t_len + 1)
-  weights <- matrix(1, nrow = noParticles, ncol = t_len + 1)
-  normalisedWeights <- matrix(0, nrow = noParticles, ncol = t_len + 1)
-  xHatFiltered <- matrix(0, nrow = t_len, ncol = 1)
-  logLikelihood <- 0
-
-  ancestorIndices[, 1] <- 1:noParticles
-  normalisedWeights[, 1] = 1 / noParticles
-
-  # Generate initial state
-  particles[, 1] <- h0 + rnorm(noParticles, mean = 0, sd = sigma_h^0.5)
-
-  for (t in 2:(t_len + 1)) {
-    # Resample ( multinomial )
-    newAncestors <- sample(noParticles, replace = TRUE, prob = normalisedWeights[, t - 1])
-    ancestorIndices[, 1:(t - 1)] <- ancestorIndices[newAncestors, 1:(t - 1)]
-    ancestorIndices[, t] <- newAncestors
-
-    # Propagate
-    part1 <- particles[newAncestors, t - 1]
-    particles[, t] <- part1 + rnorm(noParticles, mean = 0, sd = sigma_h^0.5)
-
-    # Compute weights
-    yhatMean <- 0
-    yhatVariance <- exp(particles[, t] / 2)
-    #weights[, t] <- LaplacesDemon::dst(ytilde[t - 1], mu = yhatMean, sigma = yhatVariance, nu = nu, log = TRUE)
-    weights[, t] <- dt(ytilde[t - 1]/yhatVariance, df = nu, log = T) - log(yhatVariance)
-
-    maxWeight <- max(weights[, t])
-    weights[, t] <- exp(weights[, t] - maxWeight)
-
-    sumWeights <- sum(weights[, t])
-    normalisedWeights[, t] <- weights[, t] / sumWeights
-
-    # Estimate the log-likelihood
-    logLikelihood <- logLikelihood + maxWeight + log(sumWeights) - log(noParticles)
-
-  }
-
-  # Sample the state estimate using the weights at t=t_len
-  ancestorIndex  <- sample(noParticles, 1, prob = normalisedWeights[, t_len])
-  xHatFiltered <- particles[cbind(ancestorIndices[ancestorIndex, ], 1:(t_len + 1))]
-
-  list(xHatFiltered = xHatFiltered, logLikelihood = logLikelihood)
-}
-
-PF_uniSkewSV <- function(ytilde, h0, sigma_h, nu, gamma, noParticles = 1000) {
-
-  t_len <- length(ytilde) - 1
-
-  particles <- matrix(0, nrow = noParticles, ncol = t_len + 1)
-  ancestorIndices <- matrix(0, nrow = noParticles, ncol = t_len + 1)
-  weights <- matrix(1, nrow = noParticles, ncol = t_len + 1)
-  normalisedWeights <- matrix(0, nrow = noParticles, ncol = t_len + 1)
-  xHatFiltered <- matrix(0, nrow = t_len, ncol = 1)
-  logLikelihood <- 0
-
-  ancestorIndices[, 1] <- 1:noParticles
-  normalisedWeights[, 1] = 1 / noParticles
-
-  # Generate initial state
-  particles[, 1] <- h0 +  rnorm(noParticles, mean = 0, sd = sigma_h^0.5)
-  for (t in 2:(t_len + 1)) {
-    # Resample ( multinomial )
-    newAncestors <- sample(noParticles, replace = TRUE, prob = normalisedWeights[, t - 1])
-    ancestorIndices[, 1:(t - 1)] <- ancestorIndices[newAncestors, 1:(t - 1)]
-    ancestorIndices[, t] <- newAncestors
-
-    # Propagate
-    part1 <- particles[newAncestors, t - 1]
-    particles[, t] <- part1 + rnorm(noParticles, mean = 0, sd = sigma_h^0.5)
-
-    # Compute weights
-    yhatMean <- 0
-    yhatVariance <- exp(particles[, t] / 2)
-    weights[, t] <- mapply(FUN = SkewHyperbolic::dskewhyp, x = ytilde[t - 1],
-                           mu = yhatMean, delta = sqrt(nu) * yhatVariance, beta = gamma, nu = nu, log = TRUE)
-
-    #SkewHyperbolic::dskewhyp(x = ytilde[t - 1], mu = yhatMean, delta = sqrt(nu) * yhatVariance, beta = gamma, nu = nu, log = TRUE)
-
-    maxWeight <- max(weights[, t])
-    weights[, t] <- exp(weights[, t] - maxWeight)
-
-    sumWeights <- sum(weights[, t])
-    normalisedWeights[, t] <- weights[, t] / sumWeights
-
-    # Estimate the log-likelihood
-    logLikelihood <- logLikelihood + maxWeight + log(sumWeights) - log(noParticles)
-
-  }
-
-  # Sample the state estimate using the weights at t=t_len
-  ancestorIndex  <- sample(noParticles, 1, prob = normalisedWeights[, t_len])
-  xHatFiltered <- particles[cbind(ancestorIndices[ancestorIndex, ], 1:(t_len + 1))]
-
-  list(xHatFiltered = xHatFiltered, logLikelihood = logLikelihood)
-}
-
-PF_StudentSV <- function(ytilde, h0, sigma_h, nu, noParticles = 1000) {
-
-  t_len <- length(ytilde) - 1
-
-  particles <- matrix(0, nrow = noParticles, ncol = t_len + 1)
-  ancestorIndices <- matrix(0, nrow = noParticles, ncol = t_len + 1)
-  weights <- matrix(1, nrow = noParticles, ncol = t_len + 1)
-  normalisedWeights <- matrix(0, nrow = noParticles, ncol = t_len + 1)
-  xHatFiltered <- matrix(0, nrow = t_len, ncol = 1)
-  logLikelihood <- 0
-
-  ancestorIndices[, 1] <- 1:noParticles
-  normalisedWeights[, 1] = 1 / noParticles
-
-  # Generate initial state
-  particles[, 1] <- h0 + rnorm(noParticles, mean = 0, sd = sigma_h^0.5)
-
-  for (t in 2:(t_len + 1)) {
-    # Resample ( multinomial )
-    newAncestors <- sample(noParticles, replace = TRUE, prob = normalisedWeights[, t - 1])
-    ancestorIndices[, 1:(t - 1)] <- ancestorIndices[newAncestors, 1:(t - 1)]
-    ancestorIndices[, t] <- newAncestors
-
-    # Propagate
-    part1 <- particles[newAncestors, t - 1]
-    particles[, t] <- part1 + rnorm(noParticles, mean = 0, sd = sigma_h^0.5)
-
-    # Compute weights
-    yhatMean <- 0
-    yhatVariance <- exp(particles[, t] / 2)
-    #weights[, t] <- LaplacesDemon::dst(ytilde[t - 1], mu = yhatMean, sigma = yhatVariance, nu = nu, log = TRUE)
-    weights[, t] <- dt(ytilde[t - 1]/yhatVariance, df = nu, log = T) - log(yhatVariance)
-
-    maxWeight <- max(weights[, t])
-    weights[, t] <- exp(weights[, t] - maxWeight)
-
-    sumWeights <- sum(weights[, t])
-    normalisedWeights[, t] <- weights[, t] / sumWeights
-
-    # Estimate the log-likelihood
-    logLikelihood <- logLikelihood + maxWeight + log(sumWeights) - log(noParticles)
-
-  }
-
-  # Sample the state estimate using the weights at t=t_len
-  ancestorIndex  <- sample(noParticles, 1, prob = normalisedWeights[, t_len])
-  xHatFiltered <- particles[cbind(ancestorIndices[ancestorIndex, ], 1:(t_len + 1))]
-
-  list(xHatFiltered = xHatFiltered, logLikelihood = logLikelihood)
+#' @export
+Make_SectMat <- function(y){
+  n = ncol (y)
+  t_max = nrow(y)
+  
+  yt <- t(y)
+  yt_vec <- vec(yt)
+  
+  n_obs <- sum(!is.na(y))
+  n_miss <- sum(is.na(y))
+  yobs_vec <- na.exclude(yt_vec)
+  ymiss_vec <- matrix(NA, nrow = n_miss, ncol = 1)
+  
+  nT <- n_obs+n_miss
+  i_obs <- j_obs <- rep(0,n_obs)
+  i_miss <- j_miss <- rep(0,n_miss)
+  c_obs <- c_miss <- 0
+  
+  for (t in c(1:t_max))
+    for (i in c(1:n)){
+      if (is.na(yt[i,t])){
+        c_miss <- c_miss + 1 
+        i_miss[c_miss] <- i + n*(t-1)
+        j_miss[c_miss] <- c_miss
+      } else{
+        c_obs <- c_obs + 1
+        i_obs[c_obs] <- i + n*(t-1)
+        j_obs[c_obs] <- c_obs
+      }
+    }
+  S_obs <- sparseMatrix(i = i_obs, j = j_obs, x = 1, dims =c(nT,n_obs), repr = "T")
+  S_miss <- sparseMatrix(i_miss, j_miss, x = 1, dims =c(nT,n_miss), repr = "T")
+  # cbind(yt_vec, S_obs%*% yobs_vec + S_miss%*% ymiss_vec)
+  return(list(S_obs = S_obs,
+              S_miss = S_miss))
 }
 
 #' @export
-logmeanexp <- function(sum_log){
-  if (is(sum_log, "numeric")){
-    max_sumlog <- max(sum_log)
-    out <- log( mean(exp(sum_log - max_sumlog))) + max_sumlog
-  } else {
-    max_sumlog = apply(sum_log, MARGIN = 2 , FUN = max)
-
-    out = log( apply(exp(sum_log-reprow(max_sumlog,nrow(sum_log))), MARGIN = 2, FUN = mean )) + max_sumlog
-
+Make_HB <- function(B,K,p,t_max){
+  b_intercept = B[,1]
+  m =  B[,2:ncol(B)]
+  B_t = - t(matrix(t(m), nrow=nrow(m))[, c(matrix(1:ncol(m), nrow(m), byrow=T)) ])
+  
+  nT = K*t_max
+  
+  #########################
+  # H_B1 <- sparseMatrix(i = c(1:nT), j = c(1:nT), x = 1, dims =c(nT,nT), repr = "T")
+  # for (t in c(1:(t_max-1))){
+  #   p_max <- min(p, t_max-t)
+  #   row_range <- t*K+c(1:(K*p_max))
+  #   H_B1[row_range,(t-1)*K+c(1:K)] <- head(B_t, length(row_range))
+  # }
+  #########################
+  #H_B <- sparseMatrix(i = c(1:nT), j = c(1:nT), x = 1, dims =c(nT,nT), repr = "T")
+  i_stack <- c(1:nT)
+  j_stack <- c(1:nT)
+  x_stack <- rep(1, nT)
+  for (i in c(1:p)){
+    # tmp <- as(bdiag(replicate(t_max-i,B_t[(i-1)*K + c(1:K),1:K],simplify=FALSE)),Class = "TsparseMatrix")
+    # # tmp2 <- sparseMatrix(i = tmp@i+K*i+1, j = tmp@j+1, x = tmp@x, dims = c(nT,nT), repr = "T")
+    # i_stack <- c(i_stack, tmp@i+K*i+1)
+    # j_stack <- c(j_stack, tmp@j+1)
+    # x_stack <- c(x_stack, tmp@x)
+    
+    i_post <- matrix(rep( (i*K+1):(t_max*K), each = K), nrow = K)
+    i_post1 <- i_post[,t(matrix(1:ncol(i_post), nrow = K))]
+    i_post2 <- vec(matrix(i_post1, nrow = K, byrow = T))
+    
+    i_stack <- c(i_stack, i_post2)
+    j_stack <- c(j_stack, rep(1:((t_max-i)*K), each = K))
+    x_stack <- c(x_stack, rep(vec(B_t[(i-1)*K + c(1:K),1:K]), t_max-i))
   }
-  return(out)
+  H_B <- sparseMatrix(i = i_stack, j = j_stack, x = x_stack, dims = c(nT,nT), repr = "T")
+  
+  return(H_B)
+}
+
+#' @export
+Make_cB <- function(y0,B,K,p,t_max){
+  b_intercept = B[,1]
+  B_x =  B[,2:ncol(B)]
+  #makeRegressor
+  y0 <- tail(y0, p)
+  xt <- NULL
+  if (p > 0){
+    y0_add <- rbind(y0, matrix(0, nrow = p, ncol = K ))
+    for (i in c(1:p)){
+      xt <- cbind(xt, rbind(vec( as.matrix( t(y0_add)[,(p+i-1):i]))) )
+    }
+  } 
+  c_B <- rep(b_intercept, t_max)
+  for (t in c(1:p)){
+    c_B[(t-1)*K + c(1:K) ] <- c_B[(t-1)*K + c(1:K) ] + B_x %*% xt[,t]
+  }
+  return(c_B)
 }

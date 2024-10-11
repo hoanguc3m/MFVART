@@ -3,7 +3,7 @@
 #' Impulse response function of BVAR model
 #'
 #' This function returns a impulse response function of BVAR-SV-fatTail model.
-#' @param Chain The fatBVARSV object from command BVAR.
+#' @param Chain The MFVART object from command BVAR.
 #' @param impulse.variable The position of impulse variable
 #' @param response.variable The position of reponse variable
 #' @param atT The time at which impulse response function is calculated
