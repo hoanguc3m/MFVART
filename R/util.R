@@ -360,7 +360,8 @@ Make_HB <- function(B,K,p,t_max){
 }
 
 #' @export
-Make_cB <- function(y0,B,K,p,t_max){
+Make_cB <- function(y0,B,K,p,t_max, w_t = matrix(1,ncol = p, nrow = K)){
+  # w_t is used only in MT model to account for the W_t^{1/2} * A
   b_intercept = B[,1]
   B_x =  B[,2:ncol(B)]
   #makeRegressor
@@ -374,7 +375,7 @@ Make_cB <- function(y0,B,K,p,t_max){
   } 
   c_B <- rep(b_intercept, t_max)
   for (t in c(1:p)){
-    c_B[(t-1)*K + c(1:K) ] <- c_B[(t-1)*K + c(1:K) ] + B_x %*% xt[,t]
+    c_B[(t-1)*K + c(1:K) ] <- c_B[(t-1)*K + c(1:K) ] + w_t[,t] * (B_x %*% xt[,t])
   }
   return(c_B)
 }

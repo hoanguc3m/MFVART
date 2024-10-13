@@ -45,7 +45,7 @@ Bayesian inference of MF VAR model without SV
 }
 \examples{
 \dontrun{
-datagen <- sim.VAR.novol(dist="Gaussian")
+datagen <- sim.MFVAR.novol(dist="Gaussian", idq = c(4), p = 2, K = 4, t_max = 500)
 y <- datagen$y
 prior <- get_prior(y, p = 2, dist="Gaussian", SV = F)
 inits <- get_init(prior)
