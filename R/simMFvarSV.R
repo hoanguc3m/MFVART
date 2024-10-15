@@ -94,9 +94,11 @@ sim.MFVAR.Gaussian.SV <- function(K = 5, p = 2, t_max = 1000,
   eps <- matrix(rnorm(t_max*K), ncol = K)
   volatility <- matrix(NA, nrow = t_max, ncol = K)
   inv_A0 <- solve(A0)
-
+  h_mat <- matrix(NA, nrow = t_max, ncol = K)
+  
   for (i in c(1:t_max)){
     h <- h +  Vh * rnorm(K)
+    h_mat[i,] <- h
     Sigma_t <-  inv_A0 %*% diag(exp(0.5*h), nrow = K)
     Sigma2_t <- Sigma_t %*% t(Sigma_t)
     y_var[i,] <- Sigma_t[lower.tri(Sigma_t, diag = T)]
@@ -119,7 +121,7 @@ sim.MFVAR.Gaussian.SV <- function(K = 5, p = 2, t_max = 1000,
        y0 = y0, y_mean = y_mean, y_var = y_var, volatility = volatility,
        K = K, p = p, t_max = t_max,
        A0 = A0, B0 = matrix(B0, nrow = K),
-       Vh = Vh,
+       Vh = Vh, h = h,
        dist = "Gaussian", SV = TRUE)
 }
 
@@ -180,9 +182,11 @@ sim.MFVAR.Student.SV <- function(K = 5, p = 2, t_max = 1000,
   eps <- matrix(rnorm(t_max*K), ncol = K)
   volatility <- matrix(NA, nrow = t_max, ncol = K)
   inv_A0 <- solve(A0)
-
+  h_mat <- matrix(NA, nrow = t_max, ncol = K)
+  
   for (i in c(1:t_max)){
     h <- h +  Vh * rnorm(K)
+    h_mat[i,] <- h
     Sigma_t <-  diag(w_sqrt_t[i], nrow = K) %*% inv_A0 %*% diag(exp(0.5*h), nrow = K)
     Sigma2_t <- Sigma_t %*% t(Sigma_t)
     y_var[i,] <- Sigma_t[lower.tri(Sigma_t, diag = T)]
@@ -206,7 +210,7 @@ sim.MFVAR.Student.SV <- function(K = 5, p = 2, t_max = 1000,
        K = K, p = p, t_max = t_max,
        A0 = A0, B0 = matrix(B0, nrow = K),
        nu = nu, w = w_t[(burn_in+1):(burn_in+t_max)],
-       Vh = Vh,
+       Vh = Vh, h = h,
        dist = "Student", SV = TRUE)
 }
 
@@ -270,9 +274,11 @@ sim.MFVAR.MT.SV <- function(K = 5, p = 2, t_max = 1000,
   eps <- matrix(rnorm(t_max*K), ncol = K)
   volatility <- matrix(NA, nrow = t_max, ncol = K)
   inv_A0 <- solve(A0)
-
+  h_mat <- matrix(NA, nrow = t_max, ncol = K)
+  
   for (i in c(1:t_max)){
     h <- h +  Vh * rnorm(K)
+    h_mat[i,] <- h
     Sigma_t <-  diag(w_sqrt_t[i,]) %*% inv_A0 %*% diag(exp(0.5*h), nrow = K)
     Sigma2_t <- Sigma_t %*% t(Sigma_t)
     y_var[i,] <- Sigma_t[lower.tri(Sigma_t, diag = T)]
@@ -296,7 +302,7 @@ sim.MFVAR.MT.SV <- function(K = 5, p = 2, t_max = 1000,
        K = K, p = p, t_max = t_max,
        A0 = A0, B0 = matrix(B0, nrow = K),
        nu = nu, w = w_t[(burn_in+1):(burn_in+t_max),],
-       Vh = Vh,
+       Vh = Vh, h = h,
        dist = "MT", SV = TRUE)
 }
 
@@ -360,9 +366,11 @@ sim.MFVAR.OT.SV <- function(K = 5, p = 2, t_max = 1000,
   eps <- matrix(rnorm(t_max*K), ncol = K)
   volatility <- matrix(NA, nrow = t_max, ncol = K)
   inv_A0 <- solve(A0)
-
+  h_mat <- matrix(NA, nrow = t_max, ncol = K)
+  
   for (i in c(1:t_max)){
     h <- h +  Vh * rnorm(K)
+    h_mat[i,] <- h
     Sigma_t <-  inv_A0 %*% diag(w_sqrt_t[i,] * exp(0.5*h))
     Sigma2_t <- Sigma_t %*% t(Sigma_t)
     y_var[i,] <- Sigma_t[lower.tri(Sigma_t, diag = T)]
@@ -386,7 +394,7 @@ sim.MFVAR.OT.SV <- function(K = 5, p = 2, t_max = 1000,
        K = K, p = p, t_max = t_max,
        A0 = A0, B0 = matrix(B0, nrow = K),
        nu = nu, w = w_t[(burn_in+1):(burn_in+t_max),],
-       Vh = Vh,
+       Vh = Vh, h = h,
        dist = "OT", SV = TRUE)
 }
 
