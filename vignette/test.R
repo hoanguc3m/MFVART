@@ -1,6 +1,6 @@
 library(MFVART)
-
 #############################################
+set.seed(0)
 datagen <- sim.MFVAR.novol(dist="Gaussian", idq = c(4), p = 2, K = 4, t_max = 500)
 # datagen <- sim.MFVAR.SV(dist="OT", idq = c(5))
 # 
@@ -41,6 +41,7 @@ sigma <- as.numeric(exp(0.5*datagen$h))
 
 
 #############################################
+set.seed(0)
 
 datagen <- sim.MFVAR.novol(dist="Student", idq = c(4), p = 2, K = 4, t_max = 500)
 # datagen <- sim.MFVAR.SV(dist="OT", idq = c(5))
@@ -70,6 +71,7 @@ plot( xy)
 abline(a = 0, b = 1)
 
 #############################################
+set.seed(0)
 
 datagen <- sim.MFVAR.novol(dist="OT", idq = c(4), p = 2, K = 4, t_max = 500)
 # datagen <- sim.MFVAR.SV(dist="OT", idq = c(5))
@@ -99,6 +101,7 @@ plot( xy)
 abline(a = 0, b = 1)
 
 #############################################
+set.seed(789)
 
 b0 <- matrix(rnorm(n = 4*8,mean = 0,sd = 0.1), nrow = 4, ncol = 8)
 b0[matrix(c(1:4,1:4), ncol = 2)] <- b0[matrix(c(1:4,1:4), ncol = 2)] + 0.5
@@ -134,6 +137,7 @@ abline(a = 0, b = 1)
 
 
 #############################################
+set.seed(0)
 
 datagen <- sim.MFVAR.SV(dist="Gaussian", idq = c(4), p = 2, K = 4, t_max = 500)
 
@@ -159,6 +163,7 @@ plot( xy)
 abline(a = 0, b = 1)
 
 #############################################
+set.seed(789)
 
 library(MFVART)
 b0 <- matrix(rnorm(n = 4*8,mean = 0,sd = 0.1), nrow = 4, ncol = 8)
@@ -185,6 +190,7 @@ abline(a = 0, b = 1)
 
 
 #############################################
+set.seed(789)
 b0 <- matrix(rnorm(n = 4*8,mean = 0,sd = 0.1), nrow = 4, ncol = 8)
 b0[matrix(c(1:4,1:4), ncol = 2)] <- b0[matrix(c(1:4,1:4), ncol = 2)] + 0.5
 b0[matrix(c(1:4,5:8), ncol = 2)] <- b0[matrix(c(1:4,5:8), ncol = 2)] + 0.25
@@ -216,6 +222,7 @@ abline(a = 0, b = 1)
 
 
 #############################################
+set.seed(789)
 b0 <- matrix(rnorm(n = 4*8,mean = 0,sd = 0.1), nrow = 4, ncol = 8)
 b0[matrix(c(1:4,1:4), ncol = 2)] <- b0[matrix(c(1:4,1:4), ncol = 2)] + 0.5
 b0[matrix(c(1:4,5:8), ncol = 2)] <- b0[matrix(c(1:4,5:8), ncol = 2)] + 0.25
@@ -247,6 +254,7 @@ abline(a = 0, b = 1)
 plot( xy[-c(43:46),])
 abline(a = 0, b = 1)
 #############################################
+set.seed(789)
 b0 <- matrix(rnorm(n = 4*8,mean = 0,sd = 0.1), nrow = 4, ncol = 8)
 b0[matrix(c(1:4,1:4), ncol = 2)] <- b0[matrix(c(1:4,1:4), ncol = 2)] + 0.5
 b0[matrix(c(1:4,5:8), ncol = 2)] <- b0[matrix(c(1:4,5:8), ncol = 2)] + 0.25
@@ -269,10 +277,9 @@ Chain8 <- BMFVAR.SV(y, K = K, p = p, dist = "MT", y0 = y0, prior = prior, inits 
 plot( datagen$y_true[is.na(datagen$y[,4]),4], apply(Chain8$mcmc$y_miss, MARGIN = 2, FUN = mean))
 abline(a = 0, b = 1)
 cor( datagen$y_true[is.na(datagen$y[,4]),4], apply(Chain8$mcmc$y_miss, MARGIN = 2, FUN = mean))
-xy <- cbind(c(vec(datagen$B0), t(datagen$A0)[upper.tri(datagen$A0)], as.numeric(exp(0.5*datagen$h)),
-              datagen$nu, datagen$w), 
-            apply(Chain8$mcmc$param, MARGIN = 2, FUN = mean) )
-xy <- head(xy, nrow(xy) - nrow(y)*K)
+xy <- cbind(c(vec(datagen$B0), t(datagen$A0)[upper.tri(datagen$A0)], 
+              datagen$nu, datagen$Vh), 
+            head(apply(Chain8$mcmc$param, MARGIN = 2, FUN = mean), ncol(Chain8$mcmc$param) -K - K*t_max - K*t_max ) )
 plot( xy)
 abline(a = 0, b = 1)
 
