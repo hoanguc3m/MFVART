@@ -164,7 +164,7 @@ get_prior_OLS <- function(y, p, tau = nrow(y) - p, scale_factor = 4 ){
 #' }
 get_prior <- function(y, p, priorStyle = c("Minnesota"),
                       dist = c("Gaussian"),
-                      SV = FALSE, ...){
+                      SV = FALSE, aggregation = "identity", ...){
   if (!(dist %in% c("Gaussian","Student","Skew.Student",
                     "MT","MST",
                     "OT","OST",
@@ -212,7 +212,8 @@ get_prior <- function(y, p, priorStyle = c("Minnesota"),
   prior_collect$dist <- dist
   prior_collect$SV <- SV
   prior_collect$priorStyle <- priorStyle
-
+  prior_collect$aggregation <- aggregation
+  
   if (SV) {
     prior_collect$sigma_h <- 1;
   }

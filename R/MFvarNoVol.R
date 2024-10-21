@@ -60,15 +60,29 @@ BMFVAR.novol <- function(y, K, p, dist, y0 = NULL, idq = rep(0,K), freq = 3, pri
 BMFVAR.Gaussian.novol <- function(y, K, p, y0 = NULL, idq, freq, prior = NULL, inits = NULL){
   # Init regressors in the right hand side
   t_max <- nrow(y)
-  y_raw <- y
-  yt_vec <- vec(t(y))
-  yobs_vec <- na.exclude(yt_vec)
+
+  
   
   # Init prior and initial values
   m = K * p + 1
   if (is.null(prior)){
     prior <- get_prior(y, p, priorStyle = "Minnesota", dist = "Gaussian", SV = FALSE)
   }
+  
+  aggregation <- prior$aggregation
+  if (aggregation == "identity"){
+    y_raw <- y
+    yt_vec <- vec(t(y))
+    yobs_vec <- na.exclude(yt_vec)  
+  }
+  if (aggregation == "average"){
+    y_raw <- y
+    y[,idq] <- NA
+    yt_vec <- vec(t(y))
+    yobs_vec <- na.exclude(yt_vec)  
+    z_obs_vec <- na.exclude(vec(t(y_raw[,idq])))  
+  }
+  
   # prior B
   b_prior = prior$b_prior
   V_b_prior = prior$V_b_prior

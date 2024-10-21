@@ -18,6 +18,7 @@ sim.MFVAR.novol(
   sigma_G = NULL,
   idq = rep(0, K),
   freq = 3,
+  aggregation = "identity",
   seednum = 0,
   burn_in = 0
 )
@@ -40,11 +41,11 @@ c("Gaussian","Student","Skew.Student","Skew.Student", "MT","Skew.MT","MST").}
 
 \item{nu}{The degree of freedom.}
 
-\item{gamma}{The skewness from \eqn{[-gamma, gamma]}.}
-
 \item{idq}{The indicator positions of the quarter variables}
 
 \item{freq}{The frequency of observed quarter variables.}
+
+\item{aggregation}{The method of aggregation: "identity", "average", "triangular"}
 
 \item{seednum}{The default seed.}
 

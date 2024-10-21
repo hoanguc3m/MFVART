@@ -11,9 +11,9 @@
 #' @param a0 The coefficients of A matrix.
 #' @param h The initial log diag(Sigma_t) matrix. sigma_h is set at diag(0.03, K)
 #' @param nu The degree of freedom.
-#' @param gamma The skewness from \eqn{[-gamma, gamma]}.
 #' @param idq The indicator positions of the quarter variables
 #' @param freq The frequency of observed quarter variables.
+#' @param aggregation The method of aggregation: "identity", "average", "triangular"
 #' @param seednum The default seed.
 #' @param burn_in The discarded observations.
 #' @return A list of simulated data with its specification.
@@ -27,15 +27,16 @@ sim.MFVAR.SV <- function(dist, K = 5, p = 2, t_max = 1000,
                           b0 = 0.5, a0 = 0.5, h = 0, sigma_h = NULL,
                           y0 = matrix(0, ncol = K, nrow = p),
                           nu = 6, gamma = 0.5, sigma_G = NULL,
-                          idq = rep(0,K), freq = 3, seednum = 0, burn_in = 0){
+                          idq = rep(0,K), freq = 3, aggregation = "identity", 
+                          seednum = 0, burn_in = 0){
   if (!(dist %in% c("Gaussian","Student",
                     "MT","OT") ))
     stop("dist is not implemented.")
 
-  if (dist == "Gaussian") datagen <- sim.MFVAR.Gaussian.SV(K, p, t_max, b0, a0, h, sigma_h, y0, idq, freq, seednum, burn_in)
-  if (dist == "Student") datagen <- sim.MFVAR.Student.SV(K, p, t_max, b0, a0, h, sigma_h, y0, nu, idq, freq, seednum, burn_in)
-  if (dist == "MT") datagen <- sim.MFVAR.MT.SV(K, p, t_max, b0, a0, h, sigma_h, y0, nu, idq, freq, seednum, burn_in)
-  if (dist == "OT") datagen <- sim.MFVAR.OT.SV(K, p, t_max, b0, a0, h, sigma_h, y0, nu, idq, freq, seednum, burn_in)
+  if (dist == "Gaussian") datagen <- sim.MFVAR.Gaussian.SV(K, p, t_max, b0, a0, h, sigma_h, y0, idq, freq, aggregation, seednum, burn_in)
+  if (dist == "Student") datagen <- sim.MFVAR.Student.SV(K, p, t_max, b0, a0, h, sigma_h, y0, nu, idq, freq, aggregation, seednum, burn_in)
+  if (dist == "MT") datagen <- sim.MFVAR.MT.SV(K, p, t_max, b0, a0, h, sigma_h, y0, nu, idq, freq, aggregation, seednum, burn_in)
+  if (dist == "OT") datagen <- sim.MFVAR.OT.SV(K, p, t_max, b0, a0, h, sigma_h, y0, nu, idq, freq, aggregation, seednum, burn_in)
 
   return(datagen)
 }
@@ -44,7 +45,8 @@ sim.MFVAR.SV <- function(dist, K = 5, p = 2, t_max = 1000,
 sim.MFVAR.Gaussian.SV <- function(K = 5, p = 2, t_max = 1000,
                                 b0 = 0.5, a0 = 0.5, h = 0, sigma_h = NULL,
                                 y0 = matrix(0, ncol = K, nrow = p),
-                                idq = rep(0,K), freq = 3, seednum = 0, burn_in = 0){
+                                idq = rep(0,K), freq = 3, aggregation = "identity", 
+                                seednum = 0, burn_in = 0){
   t_max = t_max + burn_in
   set.seed(seednum)
   # Sample matrix coefficient B
@@ -113,15 +115,48 @@ sim.MFVAR.Gaussian.SV <- function(K = 5, p = 2, t_max = 1000,
     ystar <- rbind(ystar, t(ysim))
   }
 
-  t_max = t_max - burn_in
-  y = y_true = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
-  y[-seq(1, t_max, by = freq) ,idq] = NA
+  if (aggregation == "identity"){
+    t_max = t_max - burn_in
+    y = y_true = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
+    y[-seq(1, t_max, by = freq) ,idq] = NA  
+  }
   
-  list(y = y, y_true = y_true,
+  if (aggregation == "average"){
+    y_aggre <- bandSparse(nrow(ystar), k = -c(0:2), 
+                          diag = list(rep(1/3, nrow(ystar)), 
+                                      rep(1/3, nrow(ystar)),
+                                      rep(1/3, nrow(ystar))),
+                          symm=FALSE) %*% ystar[,idq] 
+    
+    t_max = t_max - burn_in
+    y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
+    y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]
+    y = y_atrue
+    y[-seq(1, t_max, by = freq) ,idq] = NA  
+  }
+  
+  if (aggregation == "triangular"){
+    y_aggre <- bandSparse(nrow(ystar), k = -c(0:4), 
+                          diag = list(rep(1/3, nrow(ystar)), 
+                                      rep(2/3, nrow(ystar)),
+                                      rep(1, nrow(ystar)),
+                                      rep(2/3, nrow(ystar)),
+                                      rep(1/3, nrow(ystar))),
+                          symm=FALSE) %*% ystar[,idq] 
+    
+    t_max = t_max - burn_in
+    y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
+    y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]
+    y = y_atrue
+    y[-seq(1, t_max, by = freq) ,idq] = NA  
+  }
+  
+  list(y = y, y_true = y_true, y_atrue = y_atrue,
        y0 = y0, y_mean = y_mean, y_var = y_var, volatility = volatility,
        K = K, p = p, t_max = t_max,
        A0 = A0, B0 = matrix(B0, nrow = K),
        Vh = Vh, h = h,
+       aggregation = aggregation,
        dist = "Gaussian", SV = TRUE)
 }
 
@@ -129,7 +164,8 @@ sim.MFVAR.Gaussian.SV <- function(K = 5, p = 2, t_max = 1000,
 sim.MFVAR.Student.SV <- function(K = 5, p = 2, t_max = 1000,
                                b0 = 0.5, a0 = 0.5, h = 0, sigma_h = NULL,
                                y0 = matrix(0, ncol = K, nrow = p),
-                               nu = 6, idq = rep(0,K), freq = 3, seednum = 0, burn_in = 0){
+                               nu = 6, idq = rep(0,K), freq = 3, aggregation = "identity", 
+                               seednum = 0, burn_in = 0){
   t_max = t_max + burn_in
   set.seed(seednum)
   # Sample matrix coefficient B
@@ -201,16 +237,49 @@ sim.MFVAR.Student.SV <- function(K = 5, p = 2, t_max = 1000,
     ystar <- rbind(ystar, t(ysim))
   }
 
-  t_max = t_max - burn_in
-  y = y_true = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
-  y[-seq(1, t_max, by = freq) ,idq] = NA
+  if (aggregation == "identity"){
+    t_max = t_max - burn_in
+    y = y_true = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
+    y[-seq(1, t_max, by = freq) ,idq] = NA  
+  }
   
-  list(y = y, y_true = y_true,
+  if (aggregation == "average"){
+    y_aggre <- bandSparse(nrow(ystar), k = -c(0:2), 
+                          diag = list(rep(1/3, nrow(ystar)), 
+                                      rep(1/3, nrow(ystar)),
+                                      rep(1/3, nrow(ystar))),
+                          symm=FALSE) %*% ystar[,idq] 
+    
+    t_max = t_max - burn_in
+    y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
+    y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]
+    y = y_atrue
+    y[-seq(1, t_max, by = freq) ,idq] = NA  
+  }
+  
+  if (aggregation == "triangular"){
+    y_aggre <- bandSparse(nrow(ystar), k = -c(0:4), 
+                          diag = list(rep(1/3, nrow(ystar)), 
+                                      rep(2/3, nrow(ystar)),
+                                      rep(1, nrow(ystar)),
+                                      rep(2/3, nrow(ystar)),
+                                      rep(1/3, nrow(ystar))),
+                          symm=FALSE) %*% ystar[,idq] 
+    
+    t_max = t_max - burn_in
+    y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
+    y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]
+    y = y_atrue
+    y[-seq(1, t_max, by = freq) ,idq] = NA  
+  }
+  
+  list(y = y, y_true = y_true, y_atrue = y_atrue,
        y0 = y0, y_mean = y_mean, y_var = y_var, volatility = volatility,
        K = K, p = p, t_max = t_max,
        A0 = A0, B0 = matrix(B0, nrow = K),
        nu = nu, w = w_t[(burn_in+1):(burn_in+t_max)],
        Vh = Vh, h = h,
+       aggregation = aggregation,
        dist = "Student", SV = TRUE)
 }
 
@@ -219,7 +288,8 @@ sim.MFVAR.Student.SV <- function(K = 5, p = 2, t_max = 1000,
 sim.MFVAR.MT.SV <- function(K = 5, p = 2, t_max = 1000,
                                     b0 = 0.5, a0 = 0.5, h = 0, sigma_h = NULL,
                                     y0 = matrix(0, ncol = K, nrow = p),
-                                    nu = 6, idq = rep(0,K), freq = 3, seednum = 0, burn_in = 0){
+                                    nu = 6, idq = rep(0,K), freq = 3, aggregation = "identity", 
+                                    seednum = 0, burn_in = 0){
   t_max = t_max + burn_in
   set.seed(seednum)
   # Sample matrix coefficient B
@@ -293,16 +363,49 @@ sim.MFVAR.MT.SV <- function(K = 5, p = 2, t_max = 1000,
     ystar <- rbind(ystar, t(ysim))
   }
 
-  t_max = t_max - burn_in
-  y = y_true = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
-  y[-seq(1, t_max, by = freq) ,idq] = NA
+  if (aggregation == "identity"){
+    t_max = t_max - burn_in
+    y = y_true = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
+    y[-seq(1, t_max, by = freq) ,idq] = NA  
+  }
   
-  list(y = y, y_true = y_true,
+  if (aggregation == "average"){
+    y_aggre <- bandSparse(nrow(ystar), k = -c(0:2), 
+                          diag = list(rep(1/3, nrow(ystar)), 
+                                      rep(1/3, nrow(ystar)),
+                                      rep(1/3, nrow(ystar))),
+                          symm=FALSE) %*% ystar[,idq] 
+    
+    t_max = t_max - burn_in
+    y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
+    y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]
+    y = y_atrue
+    y[-seq(1, t_max, by = freq) ,idq] = NA  
+  }
+  
+  if (aggregation == "triangular"){
+    y_aggre <- bandSparse(nrow(ystar), k = -c(0:4), 
+                          diag = list(rep(1/3, nrow(ystar)), 
+                                      rep(2/3, nrow(ystar)),
+                                      rep(1, nrow(ystar)),
+                                      rep(2/3, nrow(ystar)),
+                                      rep(1/3, nrow(ystar))),
+                          symm=FALSE) %*% ystar[,idq] 
+    
+    t_max = t_max - burn_in
+    y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
+    y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]
+    y = y_atrue
+    y[-seq(1, t_max, by = freq) ,idq] = NA  
+  }
+  
+  list(y = y, y_true = y_true, y_atrue = y_atrue,
        y0 = y0, y_mean = y_mean, y_var = y_var, volatility = volatility,
        K = K, p = p, t_max = t_max,
        A0 = A0, B0 = matrix(B0, nrow = K),
        nu = nu, w = w_t[(burn_in+1):(burn_in+t_max),],
        Vh = Vh, h = h,
+       aggregation = aggregation,
        dist = "MT", SV = TRUE)
 }
 
@@ -311,7 +414,8 @@ sim.MFVAR.MT.SV <- function(K = 5, p = 2, t_max = 1000,
 sim.MFVAR.OT.SV <- function(K = 5, p = 2, t_max = 1000,
                                         b0 = 0.5, a0 = 0.5, h = 0, sigma_h = NULL,
                                         y0 = matrix(0, ncol = K, nrow = p),
-                                        nu = 6, idq = rep(0,K), freq = 3, seednum = 0, burn_in = 0){
+                                        nu = 6, idq = rep(0,K), freq = 3, aggregation = "identity", 
+                                        seednum = 0, burn_in = 0){
   t_max = t_max + burn_in
   set.seed(seednum)
   # Sample matrix coefficient B
@@ -385,16 +489,49 @@ sim.MFVAR.OT.SV <- function(K = 5, p = 2, t_max = 1000,
     ystar <- rbind(ystar, t(ysim))
   }
 
-  t_max = t_max - burn_in
-  y = y_true = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
-  y[-seq(1, t_max, by = freq) ,idq] = NA
+  if (aggregation == "identity"){
+    t_max = t_max - burn_in
+    y = y_true = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
+    y[-seq(1, t_max, by = freq) ,idq] = NA  
+  }
   
-  list(y = y, y_true = y_true,
+  if (aggregation == "average"){
+    y_aggre <- bandSparse(nrow(ystar), k = -c(0:2), 
+                          diag = list(rep(1/3, nrow(ystar)), 
+                                      rep(1/3, nrow(ystar)),
+                                      rep(1/3, nrow(ystar))),
+                          symm=FALSE) %*% ystar[,idq] 
+    
+    t_max = t_max - burn_in
+    y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
+    y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]
+    y = y_atrue
+    y[-seq(1, t_max, by = freq) ,idq] = NA  
+  }
+  
+  if (aggregation == "triangular"){
+    y_aggre <- bandSparse(nrow(ystar), k = -c(0:4), 
+                          diag = list(rep(1/3, nrow(ystar)), 
+                                      rep(2/3, nrow(ystar)),
+                                      rep(1, nrow(ystar)),
+                                      rep(2/3, nrow(ystar)),
+                                      rep(1/3, nrow(ystar))),
+                          symm=FALSE) %*% ystar[,idq] 
+    
+    t_max = t_max - burn_in
+    y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
+    y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]
+    y = y_atrue
+    y[-seq(1, t_max, by = freq) ,idq] = NA  
+  }
+  
+  list(y = y, y_true = y_true, y_atrue = y_atrue,
        y0 = y0, y_mean = y_mean, y_var = y_var, volatility = volatility,
        K = K, p = p, t_max = t_max,
        A0 = A0, B0 = matrix(B0, nrow = K),
        nu = nu, w = w_t[(burn_in+1):(burn_in+t_max),],
        Vh = Vh, h = h,
+       aggregation = aggregation,
        dist = "OT", SV = TRUE)
 }
 
