@@ -531,9 +531,6 @@ BMFVAR.MT.novol <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   A <- inits$A0
   B <- Vec_to_Mat(inits$B0, K, p)
   sigma <- inits$sigma
-  # Sigma <- solve(inits$A0) %*% diag(sigma, nrow = length(sigma))
-  # Sigma2 <- Sigma %*% t(Sigma)
-  # Sigma2_inv <- solve(Sigma2)
   V_b_prior_inv <- solve(V_b_prior)
   
   # Multi degrees of freedom
@@ -564,19 +561,6 @@ BMFVAR.MT.novol <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
     # # Sample y missing
     b_intercept = B[,1]
     H_B <- Make_HB(B, K, p ,t_max)
-    
-    # # Fast calculation
-    # c_B <- Make_cB(y0, B, K, p ,t_max, w_sqrt[,1:p]) 
-    # #IWA <- repcol(as.numeric(1/w_sqrt), K*t_max) * kronecker(Diagonal(t_max), as(A,Class = "TsparseMatrix") )
-    # IA <- kronecker(Diagonal(t_max), as(A,Class = "TsparseMatrix") )
-    # c_const <- IA %*% c_B
-    # IAH <- IA %*% H_B
-    # G_obs <-  IAH %*% S_obs
-    # G_miss <-  IAH %*% S_miss
-    # Wh <- rep(1/sigma^2, t_max)
-    # K_y_miss <- Matrix::t(G_miss) %*% Diagonal(t_max*K, Wh) %*% G_miss
-    # b_y_miss <- Matrix::t(G_miss) %*% Diagonal(t_max*K, Wh) %*% ( c_const - G_obs %*% (yobs_vec * 1/w_sqrt[obs_id] ))
-    # #yt_vec <- S_obs%*% yobs_vec + S_miss%*% (ymiss_vec * w_sqrt[na_id])
     
     # Another calculation
     c_B <- Make_cB(y0, B, K, p ,t_max)  # Change Make_cB

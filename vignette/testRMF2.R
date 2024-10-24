@@ -1,7 +1,7 @@
 library(MFVART)
 #############################################
 set.seed(0)
-datagen <- sim.MFVAR.novol(dist="Gaussian", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "triangular")
+datagen <- sim.MFVAR.novol(dist="Gaussian", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "average")
 
 head(datagen$y)
 head(datagen$y0)
@@ -11,7 +11,7 @@ y0 = datagen$y0
 p = datagen$p
 K = datagen$K
 
-prior <- get_prior(y, p = p, dist="Gaussian", SV = F, aggregation = "triangular", idq = c(4))
+prior <- get_prior(y, p = p, dist="Gaussian", SV = F, aggregation = "average", idq = c(4))
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain1 <- BMFVAR.novol(y, K = K, p = p, dist = "Gaussian", y0 = y0, prior = prior, inits = inits)
@@ -33,7 +33,7 @@ cor( c(vec(datagen$B0), t(datagen$A0)[upper.tri(datagen$A0)], as.numeric(exp(0.5
 #############################################
 set.seed(0)
 
-datagen <- sim.MFVAR.novol(dist="Student", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "triangular")
+datagen <- sim.MFVAR.novol(dist="Student", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "average")
 # datagen <- sim.MFVAR.SV(dist="OT", idq = c(5))
 # 
 # datagen <- sim.MFVAR.SV(dist="Student", idq = c(5))
@@ -46,7 +46,7 @@ y0 = datagen$y0
 p = datagen$p
 K = datagen$K
 
-prior <- get_prior(y, p = p, dist="Student", SV = F, aggregation = "triangular", idq = c(4))
+prior <- get_prior(y, p = p, dist="Student", SV = F, aggregation = "average", idq = c(4))
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain2 <- BMFVAR.novol(y, K = K, p = p, dist = "Student", y0 = y0, prior = prior, inits = inits)
@@ -66,7 +66,7 @@ abline(a = 0, b = 1)
 #############################################
 set.seed(0)
 
-datagen <- sim.MFVAR.novol(dist="OT", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "triangular")
+datagen <- sim.MFVAR.novol(dist="OT", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "average")
 # datagen <- sim.MFVAR.SV(dist="OT", idq = c(5))
 # 
 # datagen <- sim.MFVAR.SV(dist="Student", idq = c(5))
@@ -79,7 +79,7 @@ y0 = datagen$y0
 p = datagen$p
 K = datagen$K
 
-prior <- get_prior(y, p = p, dist="OT", SV = F, aggregation = "triangular", idq = c(4))
+prior <- get_prior(y, p = p, dist="OT", SV = F, aggregation = "average", idq = c(4))
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain3 <- BMFVAR.novol(y, K = K, p = p, dist = "OT", y0 = y0, prior = prior, inits = inits)
@@ -103,8 +103,8 @@ b0 <- matrix(rnorm(n = 4*8,mean = 0,sd = 0.1), nrow = 4, ncol = 8)
 b0[matrix(c(1:4,1:4), ncol = 2)] <- b0[matrix(c(1:4,1:4), ncol = 2)] + 0.5
 b0[matrix(c(1:4,5:8), ncol = 2)] <- b0[matrix(c(1:4,5:8), ncol = 2)] + 0.25
 b0 <- cbind(0, b0)
-datagen <- sim.MFVAR.novol(dist="MT", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "triangular")
-datagen <- sim.MFVAR.novol(dist="MT", idq = c(4), p = 2, K = 4, t_max = 500, b0 = b0, aggregation = "triangular")
+datagen <- sim.MFVAR.novol(dist="MT", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "average")
+datagen <- sim.MFVAR.novol(dist="MT", idq = c(4), p = 2, K = 4, t_max = 500, b0 = b0, aggregation = "average")
 
 head(datagen$y)
 head(datagen$y0)
@@ -114,7 +114,7 @@ y0 = datagen$y0
 p = datagen$p
 K = datagen$K
 
-prior <- get_prior(y, p = p, dist="MT", SV = F, aggregation = "triangular", idq = c(4))
+prior <- get_prior(y, p = p, dist="MT", SV = F, aggregation = "average", idq = c(4))
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain4 <- BMFVAR.novol(y, K = K, p = p, dist = "MT", y0 = y0, prior = prior, inits = inits)
@@ -135,7 +135,7 @@ abline(a = 0, b = 1)
 #############################################
 set.seed(0)
 
-datagen <- sim.MFVAR.SV(dist="Gaussian", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "triangular")
+datagen <- sim.MFVAR.SV(dist="Gaussian", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "average")
 
 head(datagen$y)
 head(datagen$y0)
@@ -146,7 +146,7 @@ p = datagen$p
 K = datagen$K
 t_max <- nrow(y)
 
-prior <- get_prior(y, p = p, dist="Gaussian", SV = T, aggregation = "triangular", idq = c(4))
+prior <- get_prior(y, p = p, dist="Gaussian", SV = T, aggregation = "average", idq = c(4))
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain5 <- BMFVAR.SV(y, K = K, p = p, dist = "Gaussian", y0 = y0, prior = prior, inits = inits)
@@ -169,14 +169,14 @@ library(MFVART)
 # b0[matrix(c(1:4,1:4), ncol = 2)] <- b0[matrix(c(1:4,1:4), ncol = 2)] + 0.5
 # b0[matrix(c(1:4,5:8), ncol = 2)] <- b0[matrix(c(1:4,5:8), ncol = 2)] + 0.25
 # b0 <- cbind(0, b0)
-# datagen <- sim.MFVAR.SV(dist="Gaussian", idq = c(4), p = 2, K = 4, t_max = 500, b0 = b0, aggregation = "triangular")
-datagen <- sim.MFVAR.SV(dist="Gaussian", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "triangular")
+# datagen <- sim.MFVAR.SV(dist="Gaussian", idq = c(4), p = 2, K = 4, t_max = 500, b0 = b0, aggregation = "average")
+datagen <- sim.MFVAR.SV(dist="Gaussian", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "average")
 y = datagen$y
 y0 = datagen$y0
 p = datagen$p
 K = datagen$K
 t_max <- nrow(y)
-prior <- get_prior(y, p = p, dist="Gaussian", SV = T, aggregation = "triangular", idq = c(4))
+prior <- get_prior(y, p = p, dist="Gaussian", SV = T, aggregation = "average", idq = c(4))
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain5a <- BMFVAR.SV(y, K = K, p = p, dist = "Gaussian", y0 = y0, prior = prior, inits = inits)
@@ -199,9 +199,9 @@ abline(a = 0, b = 1)
 # b0[matrix(c(1:4,1:4), ncol = 2)] <- b0[matrix(c(1:4,1:4), ncol = 2)] + 0.5
 # b0[matrix(c(1:4,5:8), ncol = 2)] <- b0[matrix(c(1:4,5:8), ncol = 2)] + 0.25
 # b0 <- cbind(0, b0)
-# datagen <- sim.MFVAR.SV(dist="Student", idq = c(4), p = 2, K = 4, t_max = 500, b0 = b0, aggregation = "triangular")
+# datagen <- sim.MFVAR.SV(dist="Student", idq = c(4), p = 2, K = 4, t_max = 500, b0 = b0, aggregation = "average")
 
-datagen <- sim.MFVAR.SV(dist="Student", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "triangular")
+datagen <- sim.MFVAR.SV(dist="Student", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "average")
 
 head(datagen$y)
 head(datagen$y0)
@@ -212,7 +212,7 @@ p = datagen$p
 K = datagen$K
 t_max <- nrow(datagen$y)
 
-prior <- get_prior(y, p = p, dist="Student", SV = T, aggregation = "triangular", idq = c(4))
+prior <- get_prior(y, p = p, dist="Student", SV = T, aggregation = "average", idq = c(4))
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain6 <- BMFVAR.SV(y, K = K, p = p, dist = "Student", y0 = y0, prior = prior, inits = inits)
@@ -231,7 +231,7 @@ abline(a = 0, b = 1)
 
 
 #############################################
-datagen <- sim.MFVAR.SV(dist="OT", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "triangular")
+datagen <- sim.MFVAR.SV(dist="OT", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "average")
 
 head(datagen$y)
 head(datagen$y0)
@@ -242,7 +242,7 @@ p = datagen$p
 K = datagen$K
 t_max <- nrow(datagen$y)
 
-prior <- get_prior(y, p = p, dist="OT", SV = T, aggregation = "triangular", idq = c(4))
+prior <- get_prior(y, p = p, dist="OT", SV = T, aggregation = "average", idq = c(4))
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain7 <- BMFVAR.SV(y, K = K, p = p, dist = "OT", y0 = y0, prior = prior, inits = inits)
@@ -267,8 +267,8 @@ abline(a = 0, b = 1)
 # b0[matrix(c(1:4,5:8), ncol = 2)] <- b0[matrix(c(1:4,5:8), ncol = 2)] + 0.25
 # b0 <- cbind(0, b0)
 # 
-# datagen <- sim.MFVAR.SV(dist="MT", idq = c(4), p = 2, K = 4, t_max = 500, b0 = b0, aggregation = "triangular")
-datagen <- sim.MFVAR.SV(dist="MT", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "triangular")
+# datagen <- sim.MFVAR.SV(dist="MT", idq = c(4), p = 2, K = 4, t_max = 500, b0 = b0, aggregation = "average")
+datagen <- sim.MFVAR.SV(dist="MT", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "average")
 head(datagen$y)
 head(datagen$y0)
 tail(datagen$y)
@@ -277,7 +277,7 @@ y0 = datagen$y0
 p = datagen$p
 K = datagen$K
 
-prior <- get_prior(y, p = p, dist="MT", SV = T, aggregation = "triangular", idq = c(4))
+prior <- get_prior(y, p = p, dist="MT", SV = T, aggregation = "average", idq = c(4))
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain8 <- BMFVAR.SV(y, K = K, p = p, dist = "MT", y0 = y0, prior = prior, inits = inits)
