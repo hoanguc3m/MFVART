@@ -4,17 +4,7 @@
 \alias{BMFVAR.SV}
 \title{Bayesian inference of MF VAR model with RW-SV}
 \usage{
-BMFVAR.SV(
-  y,
-  K,
-  p,
-  dist,
-  y0 = NULL,
-  idq = rep(0, K),
-  freq = 3,
-  prior = NULL,
-  inits = NULL
-)
+BMFVAR.SV(y, K, p, dist, y0 = NULL, prior = NULL, inits = NULL)
 }
 \arguments{
 \item{y}{The input data as matrix T x K where T is the number of observations and K is the number of variables}
@@ -28,13 +18,9 @@ c("Gaussian","Student","Skew.Student","Skew.Student", "MT","Skew.MT","MST").}
 
 \item{y0}{The number of observations}
 
-\item{idq}{The indicator positions of the quarter variables}
-
-\item{freq}{The frequency of observed quarter variables.}
-
 \item{prior}{The prior specification of BMFVAR.}
 
-\item{inits}{The initial values of BMFVAR.}
+\item{freq}{The frequency of observed quarter variables.}
 }
 \value{
 A coda object of the posterior samples.

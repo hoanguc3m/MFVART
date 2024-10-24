@@ -104,7 +104,7 @@ get_prior_minnesota <- function(y, p, intercept=TRUE, ...){
   return(pr)
 }
 
-######################################################################################
+#############################################################################
 get_prior_OLS <- function(y, p, tau = nrow(y) - p, scale_factor = 4 ){
   priordat = y[1:(tau+p),]
   K <- ncol(priordat)
@@ -144,7 +144,7 @@ get_prior_OLS <- function(y, p, tau = nrow(y) - p, scale_factor = 4 ){
 
 }
 
-######################################################################################
+#############################################################################
 
 #' Prior distribution of BVAR model
 #'
@@ -155,6 +155,8 @@ get_prior_OLS <- function(y, p, tau = nrow(y) - p, scale_factor = 4 ){
 #' @param dist The variable specifies the BVAR error distribution. It should be one of
 #' c("Gaussian","Student", "Skew.Student", "MT","MST","orthoStudent").
 #' @param SV The indicator if this BVAR model has a Stochastic volatility part.
+#' @param idq The indicator positions of the quarter variables
+#' @param freq The frequency of observed quarter variables.
 #' @return A list of prior specifications. \eqn{b \sim N(b0, V_b_prior)}, \eqn{a \sim N(0, 1000I)}, \eqn{sigmaSq \sim IG(0.5*sigma_T0, 0.5*sigma_S0)},
 #' \eqn{nu \sim G(a,b)}, \eqn{gamma \sim N(0, I)}.
 #' @export
@@ -164,7 +166,8 @@ get_prior_OLS <- function(y, p, tau = nrow(y) - p, scale_factor = 4 ){
 #' }
 get_prior <- function(y, p, priorStyle = c("Minnesota"),
                       dist = c("Gaussian"),
-                      SV = FALSE, aggregation = "identity", ...){
+                      SV = FALSE, aggregation = "identity", 
+                      idq = ncol(y), ...){
   if (!(dist %in% c("Gaussian","Student","Skew.Student",
                     "MT","MST",
                     "OT","OST",
@@ -213,6 +216,8 @@ get_prior <- function(y, p, priorStyle = c("Minnesota"),
   prior_collect$SV <- SV
   prior_collect$priorStyle <- priorStyle
   prior_collect$aggregation <- aggregation
+  prior_collect$idq <- idq
+  prior_collect$sdeviation <- 0.001
   
   if (SV) {
     prior_collect$sigma_h <- 1;
@@ -220,7 +225,7 @@ get_prior <- function(y, p, priorStyle = c("Minnesota"),
   return(prior_collect)
 }
 
-######################################################################################
+#############################################################################
 #' Initial values from the prior of BVAR model
 #'
 #' This function returns initial values of BVAR-SV-fatTail model from its prior.

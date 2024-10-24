@@ -107,17 +107,12 @@ sim.MFVAR.Gaussian.novol <- function(K = 5, p = 2, t_max = 1000,
   }
   if (aggregation == "identity"){
     t_max = t_max - burn_in
-    y = y_true = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
+    y = y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
     y[-seq(1, t_max, by = freq) ,idq] = NA  
   }
   
-  if (aggregation == "average"){
-    y_aggre <- bandSparse(nrow(ystar), k = -c(0:2), 
-                          diag = list(rep(1/3, nrow(ystar)), 
-                                      rep(1/3, nrow(ystar)),
-                                      rep(1/3, nrow(ystar))),
-                          symm=FALSE) %*% ystar[,idq] 
-    
+  if (aggregation == "average" || aggregation == "triangular"){
+    y_aggre <- as.matrix(Make_bandSparse(nrow(ystar), aggregation) %*% ystar[,idq])
     t_max = t_max - burn_in
     y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
     y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]
@@ -125,21 +120,6 @@ sim.MFVAR.Gaussian.novol <- function(K = 5, p = 2, t_max = 1000,
     y[-seq(1, t_max, by = freq) ,idq] = NA  
   }
   
-  if (aggregation == "triangular"){
-    y_aggre <- bandSparse(nrow(ystar), k = -c(0:4), 
-                          diag = list(rep(1/3, nrow(ystar)), 
-                                      rep(2/3, nrow(ystar)),
-                                      rep(1, nrow(ystar)),
-                                      rep(2/3, nrow(ystar)),
-                                      rep(1/3, nrow(ystar))),
-                          symm=FALSE) %*% ystar[,idq] 
-    
-    t_max = t_max - burn_in
-    y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
-    y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]
-    y = y_atrue
-    y[-seq(1, t_max, by = freq) ,idq] = NA  
-  }
   
   list(y = y, y_true = y_true, y_atrue = y_atrue,
        y0 = y0, y_mean = y_mean, y_var = y_var, volatility = volatility,
@@ -217,33 +197,12 @@ sim.MFVAR.Student.novol <- function(K = 5, p = 2, t_max = 1000,
   
   if (aggregation == "identity"){
     t_max = t_max - burn_in
-    y = y_true = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
+    y = y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
     y[-seq(1, t_max, by = freq) ,idq] = NA  
   }
   
-  if (aggregation == "average"){
-    y_aggre <- bandSparse(nrow(ystar), k = -c(0:2), 
-                          diag = list(rep(1/3, nrow(ystar)), 
-                                      rep(1/3, nrow(ystar)),
-                                      rep(1/3, nrow(ystar))),
-                          symm=FALSE) %*% ystar[,idq] 
-    
-    t_max = t_max - burn_in
-    y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
-    y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]
-    y = y_atrue
-    y[-seq(1, t_max, by = freq) ,idq] = NA  
-  }
-  
-  if (aggregation == "triangular"){
-    y_aggre <- bandSparse(nrow(ystar), k = -c(0:4), 
-                          diag = list(rep(1/3, nrow(ystar)), 
-                                      rep(2/3, nrow(ystar)),
-                                      rep(1, nrow(ystar)),
-                                      rep(2/3, nrow(ystar)),
-                                      rep(1/3, nrow(ystar))),
-                          symm=FALSE) %*% ystar[,idq] 
-    
+  if (aggregation == "average" || aggregation == "triangular"){
+    y_aggre <- as.matrix(Make_bandSparse(nrow(ystar), aggregation) %*% ystar[,idq]) 
     t_max = t_max - burn_in
     y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
     y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]
@@ -334,29 +293,14 @@ sim.MFVAR.MT.novol <- function(K = 5, p = 2, t_max = 1000,
     y[-seq(1, t_max, by = freq) ,idq] = NA  
   }
   
-  if (aggregation == "average"){
-    y_aggre <- bandSparse(nrow(ystar), k = -c(0:2), 
-                          diag = list(rep(1/3, nrow(ystar)), 
-                                      rep(1/3, nrow(ystar)),
-                                      rep(1/3, nrow(ystar))),
-                          symm=FALSE) %*% ystar[,idq] 
-    
+  if (aggregation == "identity"){
     t_max = t_max - burn_in
-    y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
-    y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]
-    y = y_atrue
+    y = y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
     y[-seq(1, t_max, by = freq) ,idq] = NA  
   }
   
-  if (aggregation == "triangular"){
-    y_aggre <- bandSparse(nrow(ystar), k = -c(0:4), 
-                          diag = list(rep(1/3, nrow(ystar)), 
-                                      rep(2/3, nrow(ystar)),
-                                      rep(1, nrow(ystar)),
-                                      rep(2/3, nrow(ystar)),
-                                      rep(1/3, nrow(ystar))),
-                          symm=FALSE) %*% ystar[,idq] 
-    
+  if (aggregation == "average" || aggregation == "triangular"){
+    y_aggre <- as.matrix(Make_bandSparse(nrow(ystar), aggregation) %*% ystar[,idq]) 
     t_max = t_max - burn_in
     y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
     y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]
@@ -442,33 +386,12 @@ sim.MFVAR.OT.novol <- function(K = 5, p = 2, t_max = 1000,
   
   if (aggregation == "identity"){
     t_max = t_max - burn_in
-    y = y_true = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
+    y = y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
     y[-seq(1, t_max, by = freq) ,idq] = NA  
   }
   
-  if (aggregation == "average"){
-    y_aggre <- bandSparse(nrow(ystar), k = -c(0:2), 
-                          diag = list(rep(1/3, nrow(ystar)), 
-                                      rep(1/3, nrow(ystar)),
-                                      rep(1/3, nrow(ystar))),
-                          symm=FALSE) %*% ystar[,idq] 
-    
-    t_max = t_max - burn_in
-    y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
-    y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]
-    y = y_atrue
-    y[-seq(1, t_max, by = freq) ,idq] = NA  
-  }
-  
-  if (aggregation == "triangular"){
-    y_aggre <- bandSparse(nrow(ystar), k = -c(0:4), 
-                          diag = list(rep(1/3, nrow(ystar)), 
-                                      rep(2/3, nrow(ystar)),
-                                      rep(1, nrow(ystar)),
-                                      rep(2/3, nrow(ystar)),
-                                      rep(1/3, nrow(ystar))),
-                          symm=FALSE) %*% ystar[,idq] 
-    
+  if (aggregation == "average" || aggregation == "triangular"){
+    y_aggre <- as.matrix(Make_bandSparse(nrow(ystar), aggregation) %*% ystar[,idq]) 
     t_max = t_max - burn_in
     y_true = y_atrue = as.matrix(ystar[(p+burn_in+1):(p+burn_in+t_max),], nrow = t_max)
     y_atrue[,idq] <- y_aggre[(p+burn_in+1):(p+burn_in+t_max),]

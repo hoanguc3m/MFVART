@@ -379,3 +379,24 @@ Make_cB <- function(y0,B,K,p,t_max, w_t = matrix(1,ncol = p, nrow = K)){
   }
   return(c_B)
 }
+
+#' @export
+Make_bandSparse <- function(t_row, aggregation){
+  if (aggregation == "average"){
+    M_aggregate <-   bandSparse(t_row, k = -c(0:2), 
+                                diag = list(rep(1/3, t_row), 
+                                            rep(1/3, t_row),
+                                            rep(1/3, t_row)),
+                                symm=FALSE)
+  }
+  if (aggregation == "triangular"){
+    M_aggregate <-   bandSparse(t_row, k = -c(0:4), 
+                                diag = list(rep(1/3, t_row), 
+                                            rep(2/3, t_row),
+                                            rep(1, t_row),
+                                            rep(2/3, t_row),
+                                            rep(1/3, t_row)),
+                                symm=FALSE)
+  }
+  return(M_aggregate)
+}

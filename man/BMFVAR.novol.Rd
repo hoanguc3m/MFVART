@@ -4,17 +4,7 @@
 \alias{BMFVAR.novol}
 \title{Bayesian inference of MF VAR model without SV}
 \usage{
-BMFVAR.novol(
-  y,
-  K,
-  p,
-  dist,
-  y0 = NULL,
-  idq = rep(0, K),
-  freq = 3,
-  prior = NULL,
-  inits = NULL
-)
+BMFVAR.novol(y, K, p, dist, y0 = NULL, prior = NULL, inits = NULL)
 }
 \arguments{
 \item{y}{The input data as matrix T x K where T is the number of observations and K is the number of variables}
@@ -27,10 +17,6 @@ BMFVAR.novol(
 c("Gaussian","Student","Skew.Student","Skew.Student", "MT","Skew.MT","MST").}
 
 \item{y0}{The number of observations}
-
-\item{idq}{The indicator positions of the quarter variables}
-
-\item{freq}{The frequency of observed quarter variables.}
 
 \item{prior}{The prior specification of BMFVAR.}
 

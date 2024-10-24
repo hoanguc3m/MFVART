@@ -10,6 +10,8 @@ get_prior(
   priorStyle = c("Minnesota"),
   dist = c("Gaussian"),
   SV = FALSE,
+  aggregation = "identity",
+  idq = ncol(y),
   ...
 )
 }
@@ -24,6 +26,10 @@ get_prior(
 c("Gaussian","Student", "Skew.Student", "MT","MST","orthoStudent").}
 
 \item{SV}{The indicator if this BVAR model has a Stochastic volatility part.}
+
+\item{idq}{The indicator positions of the quarter variables}
+
+\item{freq}{The frequency of observed quarter variables.}
 }
 \value{
 A list of prior specifications. \eqn{b \sim N(b0, V_b_prior)}, \eqn{a \sim N(0, 1000I)}, \eqn{sigmaSq \sim IG(0.5*sigma_T0, 0.5*sigma_S0)},
