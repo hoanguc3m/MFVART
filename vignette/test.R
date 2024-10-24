@@ -117,11 +117,8 @@ b0 <- matrix(rnorm(n = 4*8,mean = 0,sd = 0.1), nrow = 4, ncol = 8)
 b0[matrix(c(1:4,1:4), ncol = 2)] <- b0[matrix(c(1:4,1:4), ncol = 2)] + 0.5
 b0[matrix(c(1:4,5:8), ncol = 2)] <- b0[matrix(c(1:4,5:8), ncol = 2)] + 0.25
 b0 <- cbind(0, b0)
-
+# datagen <- sim.MFVAR.novol(dist="MT", idq = c(4), p = 2, K = 4, t_max = 500)
 datagen <- sim.MFVAR.novol(dist="MT", idq = c(4), p = 2, K = 4, t_max = 500, b0 = b0)
-# datagen <- sim.MFVAR.SV(dist="OT", idq = c(5))
-# 
-# datagen <- sim.MFVAR.SV(dist="Student", idq = c(5))
 
 head(datagen$y)
 head(datagen$y0)
