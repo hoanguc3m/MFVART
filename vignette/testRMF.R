@@ -30,6 +30,11 @@ abline(a = 0, b = 1)
 cor( c(vec(datagen$B0), t(datagen$A0)[upper.tri(datagen$A0)], as.numeric(exp(0.5*datagen$h))),
      apply(Chain1$mcmc$param, MARGIN = 2, FUN = mean))
 
+tmp <- Chain1$mcmc$y_miss[1,]
+plot(datagen$y_atrue[,4], Make_bandSparse(500, aggregation="triangular") %*% tmp)
+cbind(datagen$y_atrue[,4], 
+      Make_bandSparse(500, aggregation="triangular") %*% tmp,
+      datagen$y[,4])
 #############################################
 set.seed(0)
 
@@ -95,16 +100,17 @@ xy <- cbind(c(vec(datagen$B0), t(datagen$A0)[upper.tri(datagen$A0)], as.numeric(
 xy <- head(xy, nrow(xy) - nrow(y)*K)
 plot( xy)
 abline(a = 0, b = 1)
-
+plot( xy[-c(47:50),])
 #############################################
 set.seed(789)
 
-b0 <- matrix(rnorm(n = 4*8,mean = 0,sd = 0.1), nrow = 4, ncol = 8)
-b0[matrix(c(1:4,1:4), ncol = 2)] <- b0[matrix(c(1:4,1:4), ncol = 2)] + 0.5
-b0[matrix(c(1:4,5:8), ncol = 2)] <- b0[matrix(c(1:4,5:8), ncol = 2)] + 0.25
-b0 <- cbind(0, b0)
+# b0 <- matrix(rnorm(n = 4*8,mean = 0,sd = 0.1), nrow = 4, ncol = 8)
+# b0[matrix(c(1:4,1:4), ncol = 2)] <- b0[matrix(c(1:4,1:4), ncol = 2)] + 0.5
+# b0[matrix(c(1:4,5:8), ncol = 2)] <- b0[matrix(c(1:4,5:8), ncol = 2)] + 0.25
+# b0 <- cbind(0, b0)
+# datagen <- sim.MFVAR.novol(dist="MT", idq = c(4), p = 2, K = 4, t_max = 500, b0 = b0, aggregation = "triangular")
 datagen <- sim.MFVAR.novol(dist="MT", idq = c(4), p = 2, K = 4, t_max = 500, aggregation = "triangular")
-datagen <- sim.MFVAR.novol(dist="MT", idq = c(4), p = 2, K = 4, t_max = 500, b0 = b0, aggregation = "triangular")
+
 
 head(datagen$y)
 head(datagen$y0)
@@ -130,7 +136,8 @@ xy <- cbind(c(vec(datagen$B0), t(datagen$A0)[upper.tri(datagen$A0)], as.numeric(
 xy <- head(xy, nrow(xy) - nrow(y)*K)
 plot( xy)
 abline(a = 0, b = 1)
-
+plot( xy[-c(47:50),])
+abline(a = 0, b = 1)
 
 #############################################
 set.seed(0)

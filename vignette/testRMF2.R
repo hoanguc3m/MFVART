@@ -293,7 +293,7 @@ xy <- cbind(c(vec(datagen$B0), t(datagen$A0)[upper.tri(datagen$A0)],
 plot( xy)
 abline(a = 0, b = 1)
 
-save.image("/home/hoanguc3m/MEGA/WP16/RData/02SimRestrict.RData")
+save.image("/home/hoanguc3m/MEGA/WP16/RData/02SimAverage.RData")
 Chain1$esttime
 Chain2$esttime
 Chain3$esttime
