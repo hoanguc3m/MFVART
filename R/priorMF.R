@@ -2,7 +2,7 @@
 # URL: https://github.com/joergrieger/bvars
 
 #' @export
-get_prior_minnesota <- function(y, p, intercept=TRUE, ...){
+get_prior_minnesota <- function(y, p, intercept=TRUE, idq = ncol(y),...){
   # lambda1=0.2, lambda2=0.5, lambda3=1, lambda4=2
   arguments <- eval(substitute(alist(...)))
   lambda1 <- ifelse(is.null(arguments$lambda1), 0.5, arguments$lambda1)
@@ -174,12 +174,11 @@ get_prior <- function(y, p, priorStyle = c("Minnesota"),
                       dist = c("Gaussian"),
                       SV = FALSE, aggregation = "identity", 
                       idq = ncol(y), ...){
-  if (!(dist %in% c("Gaussian","Student","Skew.Student",
-                    "MT","MST",
-                    "OT","OST",
-                    "dynSkew.Student", "OrthSkewNorm", "dynOST") ))
+  if (!(dist %in% c("Gaussian","Student","OT") ))
     stop("dist is not implemented.")
-
+  arguments <- eval(substitute(alist(...)))
+    r <- ifelse(is.null(arguments$r), K-1, arguments$r)
+  
   arguments <- eval(substitute(alist(...)))
 
   K <- ncol(y)
@@ -224,6 +223,9 @@ get_prior <- function(y, p, priorStyle = c("Minnesota"),
   prior_collect$aggregation <- aggregation
   prior_collect$idq <- idq
   prior_collect$sdeviation <- 0.001
+  prior_collect$r <- r
+  prior_collect$Vlhyper <- 1 
+  prior_collect$mulhyper <- 0 
   
   if (SV) {
     prior_collect$sigma_h <- 1;

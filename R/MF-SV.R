@@ -6,7 +6,7 @@
 #' @param K The number of variables in BVAR model.
 #' @param p The number of lags in BVAR model.
 #' @param dist The variable specifies the BVAR error distribution. It should be one of
-#' c("Gaussian","Student","Skew.Student","Skew.Student", "MT","Skew.MT","MST").
+#' c("Gaussian","Student","OT").
 #' @param y0 The number of observations
 #' @param prior The prior specification of BMFVAR.
 #' @param freq The frequency of observed quarter variables.
@@ -131,7 +131,6 @@ BMFVAR.Gaussian.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   for (j in c(1:samples)){
     
     # # Sample y missing
-    b_intercept = B[,1]
     H_B <- Make_HB(B, K, p ,t_max)
     c_B <- Make_cB(y0, B, K, p ,t_max)
     IA <- kronecker(Diagonal(t_max), as(A,Class = "TsparseMatrix") )
@@ -325,7 +324,6 @@ BMFVAR.Student.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   for (j in c(1:samples)){
     
     # # Sample y missing
-    b_intercept = B[,1]
     H_B <- Make_HB(B, K, p ,t_max)
     c_B <- Make_cB(y0, B, K, p ,t_max)
     IA <- kronecker(Diagonal(t_max), as(A,Class = "TsparseMatrix") )
@@ -558,9 +556,7 @@ BMFVAR.MT.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   
   for (j in c(1:samples)){
     # # Sample y missing
-    b_intercept = B[,1]
     H_B <- Make_HB(B, K, p ,t_max)
-    # Another calculation
     c_B <- Make_cB(y0, B, K, p ,t_max)  # Change Make_cB
     W_mat <- bandSparse(K*t_max, k = -c(0:(K-1)), 
                         diag = lapply(X = c(1:K), FUN = function(i) 1/as.numeric(w_sqrt)[i:(K*t_max)] ),
@@ -822,7 +818,6 @@ BMFVAR.OT.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   for (j in c(1:samples)){
     
     # # Sample y missing
-    b_intercept = B[,1]
     H_B <- Make_HB(B, K, p ,t_max)
     c_B <- Make_cB(y0, B, K, p ,t_max)
     IA <- kronecker(Diagonal(t_max), as(A,Class = "TsparseMatrix") )

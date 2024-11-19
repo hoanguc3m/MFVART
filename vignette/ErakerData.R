@@ -104,7 +104,7 @@ inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain1 <- BMFVAR.novol(y, K = K, p = p, dist = "Gaussian", y0 = y0, prior = prior, inits = inits)
 B <- matrix(apply(Chain1$mcmc$param, MARGIN = 2, FUN = median)[1:20], nrow = 4)
 A = diag(1, K, K)
-A[upper.tri(A, diag=FALSE)] <- apply(Chain7$mcmc$param, MARGIN = 2, FUN = median)[21:26]
+A[upper.tri(A, diag=FALSE)] <- apply(Chain1$mcmc$param, MARGIN = 2, FUN = median)[21:26]
 A <- t(A)
 A_inv <- solve(A)
 A_inv %*% t(A_inv)

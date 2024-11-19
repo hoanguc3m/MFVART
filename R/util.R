@@ -438,7 +438,7 @@ Make_HB <- function(B,K,p,t_max){
 }
 
 #' @export
-Make_cB <- function(y0,B,K,p,t_max){
+Make_cB <- function(y0,B,K,p,t_max, LF = rep(0,K*t_max)){
   # w_t is used only in MT model to account for the W_t^{1/2} * A
   b_intercept = B[,1]
   B_x =  B[,2:ncol(B)]
@@ -451,7 +451,7 @@ Make_cB <- function(y0,B,K,p,t_max){
       xt <- cbind(xt, rbind(vec( as.matrix( t(y0_add)[,(p+i-1):i]))) )
     }
   } 
-  c_B <- rep(b_intercept, t_max)
+  c_B <- rep(b_intercept, t_max) + LF
   for (t in c(1:p)){
     c_B[(t-1)*K + c(1:K) ] <- c_B[(t-1)*K + c(1:K) ] + (B_x %*% xt[,t])
   }
