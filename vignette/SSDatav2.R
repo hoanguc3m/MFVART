@@ -91,7 +91,7 @@ prior <- get_prior(y, p = p, dist="Student", SV = T, aggregation = "triangular",
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain6 <- BMFVAR.SV(y, K = K, p = p, dist = "Student", y0 = y0, prior = prior, inits = inits)
-median(Chain6$mcmc$param[,27])
+median(Chain6$mcmc$param[,320])
 plot(apply(Chain5$mcmc$param, MARGIN = 2, FUN = median)[1:319],
      apply(Chain6$mcmc$param, MARGIN = 2, FUN = median)[c(1:26,28:31)])
 abline(a = 0, b = 1)

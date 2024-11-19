@@ -174,6 +174,84 @@ sample_h_ele <- function(ytilde, sigma_h = 0.0001*diag(K), h0_mean = rep(0,K),
   return(aux)
 }
 
+
+#' @export
+sample_h_Chan <- function(ytilde, sigma_h = 0.0001*diag(K), h0_mean = rep(0,K),
+                         h = matrix(0, nrow = K, ncol = t_max), K, t_max, prior){
+  pi <- c(0.0073, 0.10556, 0.00002, 0.04395, 0.34001, 0.24566, 0.2575)
+  mi <- c(-10.12999, -3.97281, -8.56686, 2.77786, 0.61942, 1.79518, -1.08819) - 1.2704  # already adjusted
+  sigi <- c(5.79596, 2.61369, 5.17950, 0.16735, 0.64009, 0.34023, 1.26261)
+  sqrtsigi <- sqrt(sigi)
+  
+  Hphi <- sparseMatrix(i = c(1:t_max, 2:t_max), 
+                       j = c(1:t_max, 1:(t_max-1)), 
+                       x = c(rep(1, t_max), rep(-1, t_max-1)), 
+                       dims = c(t_max, t_max))
+  
+  # Zs <- matrix(1,t_max,1) %x% diag(1)
+  
+  for (ii in 1:K) {
+    sigma_prmean <- h0_mean[ii] # mean h_0
+    sigma_prvar <- matrix(4)   # variance h_0
+    
+    ystar <- log(ytilde[ii,]^2 + 0.0001)
+    
+    # Sample S from a 7-point discrete distribution
+    temprand <- runif(t_max)
+    q <- matrix(rep(pi, each = t_max), nrow = t_max) * dnorm(matrix(rep(ystar, times = 7), nrow = t_max),
+                                                     matrix(rep(h[ii,], times = 7), nrow = t_max) + 
+                                                       matrix(rep(mi, each = t_max), nrow = t_max),
+                                                     matrix(rep(sqrtsigi, each = t_max), nrow = t_max))
+    q <- q / rowSums(q)
+    S <- 7 - rowSums(matrix(rep(temprand, times = 7), nrow = t_max) < t(apply(q, 1, cumsum))) + 1
+    
+    ## sample h using the precision-based algorithm
+    # y* = h + d + epsilon*, epsilon* ~ N(0,Sig_y*),
+    # Hphi h = alpha-tilde + zeta, zeta ~ N(0,Sig_h),
+    # where 
+    # d_t = E(epsilon*_t), Sig_y* = diag(var(epsilon*_1), ..., epsilon*_T),
+    # Sig_h = diag(sig2/(1-phi^2), sig2, ..., sig2)
+
+    sig2 <- sigma_h[ii,ii]
+    invSigh <- sparseMatrix(i = 1:t_max, 
+                            j = 1:t_max, 
+                            x = rep(1/sig2, t_max))
+    
+    d <- mi[S]
+    invSigystar <- Diagonal(t_max, 1/sigi[S])
+    
+    alpha <- c(sigma_prmean, rep(0, t_max-1))
+    
+    Kh <- Matrix::t(Hphi) %*% invSigh %*% Hphi + invSigystar
+    dh <- Matrix::t(Hphi) %*% invSigh %*% alpha + invSigystar %*% (ystar - d)
+    Ch <- chol(Kh)
+    
+
+    h[ii,] <- backsolve( Ch,
+                         backsolve( Ch, dh,
+                                    upper.tri = T, transpose = T )
+                         + rnorm(t_max) )
+  }
+  h0 <- rep(0, K)
+  
+
+  
+  if (K>1) {
+    sse_2 <- apply( (h[,2:t_max] - h[,1:(t_max-1)] )^2, MARGIN = 1, FUN = sum)
+  } else {
+    sse_2 <- sum( (h[,2:t_max] - h[,1:(t_max-1)] )^2)
+  }
+
+  sigma_h <- diag(mapply( GIGrvg::rgig, n = 1, lambda = - (t_max -1 - 1)*0.5, chi = sse_2,
+                          psi = 1/prior$sigma_S0 ) , nrow = K)
+
+  
+  aux <- list(sigma_h = sigma_h,
+              h0 = h0, # here do not sample h0
+              Sigtdraw = h,
+              sigt = exp(0.5*h))
+  return(aux)
+}
 #' @export
 sample_h_mod <- function(ytilde, sigma_h = 0.0001*diag(K), h0_mean = rep(0,K),
                          h = matrix(0, nrow = t_max, ncol = K), K, t_max, prior){

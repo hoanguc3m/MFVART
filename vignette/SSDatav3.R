@@ -106,5 +106,14 @@ apply(Chain7$mcmc$param, MARGIN = 2, FUN = median)[208:216]
 plot(apply(Chain6$mcmc$param, MARGIN = 2, FUN = median)[c(1:207,209:217)],
      apply(Chain7$mcmc$param, MARGIN = 2, FUN = median)[c(1:207,217:225)])
 abline(a = 0, b = 1)
+Chain7$esttime
+plot(Chain7$mcmc$y_miss[1,])
+mcmc_tmp <- matrix(NA, nrow = 5000, ncol = 769)
+for (i in c(1:5000)){
+  mcmc_tmp[i,] <- as.numeric(Make_bandSparse(769, aggregation="triangular") %*% Chain7$mcmc$y_miss[i,])
+}
+matplot(mcmc_tmp)
+as.mcmc()
+plot(Make_bandSparse(769, aggregation="triangular") %*% Chain7$mcmc$y_miss[1,], type = "l")
 
 save.image("/home/hoanguc3m/MEGA/WP16/RData/03SSv3.RData")

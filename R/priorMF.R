@@ -9,7 +9,8 @@ get_prior_minnesota <- function(y, p, intercept=TRUE, ...){
   lambda2 <- ifelse(is.null(arguments$lambda2), 0.2, arguments$lambda2)
   lambda3 <- ifelse(is.null(arguments$lambda3), 1, arguments$lambda3)
   lambda4 <- ifelse(is.null(arguments$lambda4), 2, arguments$lambda4)
-
+  lambda5 <- ifelse(is.null(arguments$lambda5), 0.05, arguments$lambda5)
+  
 
   t_max <- nrow(y)
   K   <- ncol(y)
@@ -22,7 +23,7 @@ get_prior_minnesota <- function(y, p, intercept=TRUE, ...){
     B0 <- cbind(rep(0,K))
   }
 
-  if (p > 0) B0 <- cbind(B0, diag(1, nrow = K, ncol = K))
+  if (p > 0) B0 <- cbind(B0, diag(0.8, nrow = K, ncol = K))
   if (p > 1){
     for (i in c(2:p)){
       B0 <- cbind(B0, matrix(0,K,K))
@@ -82,7 +83,12 @@ get_prior_minnesota <- function(y, p, intercept=TRUE, ...){
         indx <- (kk - 1) * K  + (jj - 1) * K * K + ii + constant * K
 
         if(ii==kk){
-          Vi[indx] <- lambda1/(jj^lambda4)
+          if (ii %in% idq){
+            Vi[indx] <- lambda5/(jj^lambda4)
+          } else {
+            Vi[indx] <- lambda1/(jj^lambda4)
+          }
+          
         } else{
           Vi[indx] <- (lambda2)/(jj ^ lambda4) *(sigmasq[ii] / sigmasq[kk])
         }
@@ -182,7 +188,7 @@ get_prior <- function(y, p, priorStyle = c("Minnesota"),
 
   # return b0, V_b_prior, sigma
   if (priorStyle == "Minnesota"){
-    prior_sub <- get_prior_minnesota(y, p, intercept = TRUE, ...)
+    prior_sub <- get_prior_minnesota(y, p, intercept = TRUE, idq, ...)
   }
   if (priorStyle == "OLS"){
 
