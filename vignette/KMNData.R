@@ -107,4 +107,38 @@ plot(apply(Chain6$mcmc$param, MARGIN = 2, FUN = median)[c(1:40,42:46)],
      apply(Chain7$mcmc$param, MARGIN = 2, FUN = median)[c(1:40,46:50)])
 abline(a = 0, b = 1)
 
-save.image("/home/hoanguc3m/MEGA/WP16/RData/03SMN.RData")
+# save.image("/home/hoanguc3m/MEGA/WP16/RData/03KMN.RData")
+
+prior <- get_prior(y, p = p, dist="Gaussian", SV = T, 
+                   aggregation = "triangular", idq = c(5), r = 2)
+inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
+Chain8 <- BMFVAR.FSV(y, K = K, p = p, dist = "Gaussian", y0 = y0, prior = prior, inits = inits)
+
+plot(apply(get_post(Chain5$mcmc$param, element = "B"), 2, mean),
+     apply(get_post(Chain8$mcmc$param, element = "B"), 2, mean))
+abline(a = 0, b = 1)
+plot(apply((Chain5$mcmc$y_miss), 2, mean),
+     apply(Chain8$mcmc$y_miss, 2, mean))
+
+prior <- get_prior(y, p = p, dist="Student", SV = T, 
+                   aggregation = "triangular", idq = c(5), r = 2)
+inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
+Chain9 <- BMFVAR.FSV(y, K = K, p = p, dist = "Student", y0 = y0, prior = prior, inits = inits)
+plot(apply(get_post(Chain6$mcmc$param, element = "B"), 2, mean),
+     apply(get_post(Chain9$mcmc$param, element = "B"), 2, mean))
+abline(a = 0, b = 1)
+plot(apply((Chain6$mcmc$y_miss), 2, mean),
+     apply(Chain9$mcmc$y_miss, 2, mean))
+
+prior <- get_prior(y, p = p, dist="OT", SV = T, 
+                   aggregation = "triangular", idq = c(5), r = 2)
+inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
+Chain10 <- BMFVAR.FSV(y, K = K, p = p, dist = "OT", y0 = y0, prior = prior, inits = inits)
+
+plot(apply(get_post(Chain7$mcmc$param, element = "B"), 2, mean),
+     apply(get_post(Chain10$mcmc$param, element = "B"), 2, mean))
+abline(a = 0, b = 1)
+plot(apply((Chain7$mcmc$y_miss), 2, mean),
+     apply(Chain10$mcmc$y_miss, 2, mean))
+
+save.image("/home/hoanguc3m/MEGA/WP16/RData/03KMN.RData")

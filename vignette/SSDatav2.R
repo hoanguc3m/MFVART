@@ -46,7 +46,7 @@ K = 11
 t_max <- nrow(y)
 vars::VARselect( na.omit(y))
 
-load("/home/hoanguc3m/MEGA/WP16/RData/03SSv2.RData")
+# load("/home/hoanguc3m/MEGA/WP16/RData/03SSv2.RData")
 library(MFVART)
 
 prior <- get_prior(y, p = p, dist="Gaussian", SV = F, aggregation = "triangular", idq = c(9,10,11))
@@ -119,5 +119,40 @@ A <- t(A)
 plot(apply(Chain6$mcmc$param, MARGIN = 2, FUN = median)[c(1:308,310:320)],
      apply(Chain7$mcmc$param, MARGIN = 2, FUN = median)[c(1:308,320:330)])
 abline(a = 0, b = 1)
+
+####################################
+
+
+
+prior <- get_prior(y, p = p, dist="Gaussian", SV = T, 
+                   aggregation = "triangular", idq = c(9), r = 4)
+inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
+Chain8 <- BMFVAR.FSV(y, K = K, p = p, dist = "Gaussian", y0 = y0, prior = prior, inits = inits)
+
+plot(apply(get_post(Chain5$mcmc$param, element = "B"), 2, mean),
+     apply(get_post(Chain8$mcmc$param, element = "B"), 2, mean))
+abline(a = 0, b = 1)
+plot(apply((Chain5$mcmc$y_miss), 2, mean),
+     apply(Chain8$mcmc$y_miss, 2, mean))
+
+prior <- get_prior(y, p = p, dist="Student", SV = T, 
+                   aggregation = "triangular", idq = c(9), r = 4)
+inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
+Chain9 <- BMFVAR.FSV(y, K = K, p = p, dist = "Student", y0 = y0, prior = prior, inits = inits)
+plot(apply(get_post(Chain6$mcmc$param, element = "B"), 2, mean),
+     apply(get_post(Chain9$mcmc$param, element = "B"), 2, mean))
+abline(a = 0, b = 1)
+plot(apply((Chain6$mcmc$y_miss), 2, mean),
+     apply(Chain9$mcmc$y_miss, 2, mean))
+
+prior <- get_prior(y, p = p, dist="OT", SV = T, 
+                   aggregation = "triangular", idq = c(9), r = 4)
+inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
+Chain10 <- BMFVAR.FSV(y, K = K, p = p, dist = "OT", y0 = y0, prior = prior, inits = inits)
+plot(apply(get_post(Chain7$mcmc$param, element = "B"), 2, mean),
+     apply(get_post(Chain10$mcmc$param, element = "B"), 2, mean))
+abline(a = 0, b = 1)
+plot(apply((Chain7$mcmc$y_miss), 2, mean),
+     apply(Chain10$mcmc$y_miss, 2, mean))
 
 save.image("/home/hoanguc3m/MEGA/WP16/RData/03SSv2.RData")

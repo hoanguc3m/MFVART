@@ -273,8 +273,6 @@ BMFVAR.Student.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   # Init regressors in the right hand side
   t_max <- nrow(y)
   y_raw <- y
-  yt_vec <- vec(t(y))
-  yobs_vec <- na.exclude(yt_vec)
   
   # Init prior and initial values
   m = K * p + 1
@@ -309,16 +307,13 @@ BMFVAR.Student.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   }
   
   # prior B
-  b_prior = prior$b_prior
-  V_b_prior = prior$V_b_prior
+  b_prior = matrix(prior$b_prior, nrow = K)
+  V_b_prior = matrix(diag(prior$V_b_prior), nrow = K)
   # prior sigma
   sigma0_T0 <- prior$sigma_T0
   sigma0_S0 <- prior$sigma_S0
   # prior h0_mean
   h0_mean <- 2 * log(prior$sigma)
-  # prior A
-  a_prior = prior$a_prior
-  V_a_prior = prior$V_a_prior
   # prior nu
   nu_gam_a = prior$nu_gam_a
   nu_gam_b = prior$nu_gam_b
@@ -329,12 +324,9 @@ BMFVAR.Student.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   }
   
   samples <- inits$samples
-  A <- inits$A0
   B <- inits$B0
   h <- inits$h
   sigma_h <- inits$sigma_h
-  
-  V_b_prior_inv <- solve(V_b_prior)
   
   nu <- inits$nu
   logsigma_nu <- 0
@@ -346,7 +338,19 @@ BMFVAR.Student.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   w_sqrt <- sqrt(w)
   
   # new precompute
-  theta.prior.precmean <- V_b_prior_inv %*% b_prior
+  r <- prior$r
+  Vlhyper <- prior$Vlhyper
+  mulhyper <- prior$mulhyper
+  
+  sigma_hf <- diag(rep(1, r)) # Variance of factor
+  n_load <- K*r-r*(r+1)/2
+  L_idx <- c(1:(K*r))[lower.tri(matrix(1, nrow = K, ncol = r))]
+  L <- inits$A0[,1:r]
+  Fmat <- matrix(0, nrow = r, ncol = t_max)
+  
+  hf <- matrix(0, nrow = r, ncol = t_max)
+  hf0 <- rep(0,r)
+  
   S_select <- Make_SectMat(y)
   n_obs <- sum(!is.na(y))
   n_miss <- sum(is.na(y))
@@ -355,7 +359,7 @@ BMFVAR.Student.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   S_miss <- S_select$S_miss
   
   # Output
-  mcmc <-  matrix(NA, nrow = m*K + 0.5*K*(K-1) + 1 + K + K + K*t_max + t_max,
+  mcmc <-  matrix(NA, nrow = m*K + length(L_idx) + 1 + K+r + K + K*t_max + t_max,
                   ncol = (samples - inits$burnin)%/% inits$thin)
   My_miss <- matrix(NA, nrow = n_miss,
                     ncol = (samples - inits$burnin)%/% inits$thin)
@@ -364,16 +368,15 @@ BMFVAR.Student.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
     
     # # Sample y missing
     H_B <- Make_HB(B, K, p ,t_max)
-    c_B <- Make_cB(y0, B, K, p ,t_max)
-    IA <- kronecker(Diagonal(t_max), as(A,Class = "TsparseMatrix") )
-    c_const <- IA %*% c_B
-    IAH <- IA %*% H_B
+    c_B <- Make_cB(y0, B, K, p ,t_max, LF = as.numeric(L %*% Fmat) )
+    # IA <- kronecker(Diagonal(t_max), Diagonal(K) ) # t_max * K diag
+    c_const <- c_B
+    IAH <- H_B
     G_obs <-  IAH %*% S_obs
     G_miss <-  IAH %*% S_miss
     Wh <- rep(1/w_sample, each = K) * as.vector(exp(-h))
-    
-    K_y_miss <- Matrix::t(G_miss) %*% Diagonal(t_max*K, Wh) %*% G_miss
-    b_y_miss <- Matrix::t(G_miss) %*% Diagonal(t_max*K, Wh) %*% ( c_const - G_obs %*% yobs_vec)
+    K_y_miss <- Matrix::t(G_miss) %*% Diagonal(t_max*K, Wh ) %*% G_miss
+    b_y_miss <- Matrix::t(G_miss) %*% Diagonal(t_max*K, Wh ) %*% ( c_const - G_obs %*% yobs_vec)
     
     if (aggregation == "identity"){
       # sample from N( K^-1 b, K^-1)
@@ -391,53 +394,79 @@ BMFVAR.Student.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
     
     yt_vec <- S_obs%*% yobs_vec + S_miss%*% ymiss_vec
     
-    # sample B
-    yt = matrix(yt_vec, nrow = K)
-    y = t(yt)
-    xt <- makeRegressor( y, y0, t_max, K, p)
+    # sample B and L
+    {
+      yt = matrix(yt_vec, nrow = K)
+      y = t(yt)
+      xt <- makeRegressor( y, y0, t_max, K, p)
+      
+      for (ii in 1:K) {
+        if (ii <= r) {
+          if (ii ==1){
+            Zi <- xt
+          } else {
+            Zi <- rbind(xt, Fmat[1:(ii-1),, drop = FALSE])  
+          }
+          
+          iVthetai <- Diagonal(x = 1/c(V_b_prior[ii,], 
+                                       rep(1 / Vlhyper, ii-1)))
+          thetai0 <- c(b_prior[ii,], rep(mulhyper, ii-1))
+          ZiSigi <- Zi %*% Diagonal(t_max, exp(-h[ii,]) / w[ii,] )
+          dthetai <- iVthetai %*% thetai0 + ZiSigi %*% (yt[ii,] - Fmat[ii,])
+        } else {
+          Zi <- rbind(xt, Fmat)
+          iVthetai <- Diagonal(x = 1/c(V_b_prior[ii,], rep(Vlhyper,r)))
+          thetai0 <- c(b_prior[ii,], rep(mulhyper, r))
+          ZiSigi <- Zi %*% Diagonal(t_max, exp(-h[ii,])/ w[ii,] )
+          dthetai <- iVthetai %*% thetai0 + ZiSigi %*% yt[ii,]
+        }
+        
+        Kthetai <- iVthetai + ZiSigi %*% Matrix::t(Zi)
+        CKthetai <- chol(Kthetai)
+        
+        thetai <- backsolve( CKthetai,
+                             backsolve( CKthetai, dthetai,
+                                        upper.tri = T, transpose = T )
+                             + rnorm(m+min(ii-1, r)) )
+        B[ii, ] <- thetai[1:m]
+        if (ii > 1){
+          L[ii, 1:min(ii-1, r)] <- thetai[(m+1):length(thetai)]  
+        }
+        
+      }
+    }
     
-    wt <- as.vector(1/(exp(h/2)*w_sqrt))
-    y.tilde <- as.vector( A %*% yt ) * wt
-    x.tilde <- kronecker( t(xt), A ) * wt
-    theta.prec.chol <- chol( V_b_prior_inv + crossprod(x.tilde) )
-    b_sample <- backsolve( theta.prec.chol,
-                           backsolve( theta.prec.chol, theta.prior.precmean + crossprod( x.tilde, y.tilde ),
-                                      upper.tri = T, transpose = T )
-                           + rnorm(K*m) )
-    B <- matrix(b_sample,K,m)
+    {
+      # Sample f
+      e = matrix((yt - B %*%xt),ncol = 1)
+      Xf <- kronecker(Diagonal(t_max), L)
+      XfiSig <- Matrix::t(Xf) %*% Diagonal(t_max*K, exp(-h)/w )
+      Kf <- Diagonal(t_max*r, exp(-hf)) + XfiSig %*% Xf
+      CKf <- chol(Kf)
+      f <- backsolve( CKf,
+                      backsolve( CKf, XfiSig %*% e,
+                                 upper.tri = T, transpose = T )
+                      + rnorm(t_max*r) )
+      Fmat <- matrix(f, r, t_max)
+    }
     
     # Sample vol
-    ytilde <- A%*% ((yt - B %*% xt)/w_sqrt)
+    ytilde <- (yt - B %*%xt - L %*% Fmat)/w_sqrt
     aux <- sample_h_ele(ytilde = ytilde, sigma_h = sigma_h, h0_mean = h0_mean, h = h, K = K, t_max = t_max, prior = prior)
     h <- aux$Sigtdraw
     h0 <- as.numeric(aux$h0)
     sqrtvol <- aux$sigt
     sigma_h <- aux$sigma_h
     
-    
-    # Sample A0
-    u_std <- (yt - B %*%xt)/ w_sqrt # change from Gaussian
-    u_neg <- - u_std
-    a_sample <- rep(0, K * (K - 1) /2)
-    if (K > 1) {
-      for (i in c(2:K)){
-        id_end <- i*(i-1)/2
-        id_start <- id_end - i + 2
-        a_sub <- a_prior[id_start:id_end]
-        V_a_sub <- V_a_prior[id_start:id_end, id_start:id_end]
-        a_sample[c(id_start:id_end)] <- sample_A_ele(ysub = u_std[i,] / sqrtvol[i,],
-                                                     xsub = matrix(u_neg[1:(i-1),] / sqrtvol[i,], nrow = i-1),
-                                                     a_sub = a_sub,
-                                                     V_a_sub = V_a_sub)
-      }
-    }
-    A_post <- matrix(0, nrow = K, ncol = K)
-    A_post[upper.tri(A)] <- a_sample
-    A <- t(A_post)
-    diag(A) <- 1
+    aux <- sample_h_ele(ytilde = Fmat, sigma_h = sigma_hf, h0_mean = rep(0,r), 
+                        h = hf, K = r, t_max = t_max, prior = prior)
+    hf <- aux$Sigtdraw
+    hf0 <- as.numeric(aux$h0)
+    sqrtvolf <- aux$sigt
+    sigma_hf <- aux$sigma_h
     
     # Sample w
-    u <-  A %*% (yt - B %*%xt)
+    u <-  yt - B %*%xt - L %*% Fmat
     w_sample <- rinvgamma( n = t_max, shape = (nu+K)*0.5, rate = 0.5*( nu + colSums((u^2)/exp(h)) ) )
     w <- reprow(w_sample, K)
     w_sqrt <- sqrt(w)
@@ -469,7 +498,7 @@ BMFVAR.Student.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
     }
     
     if ((j > inits$burnin) & (j %% inits$thin == 0)){
-      mcmc[, (j - inits$burnin) %/% inits$thin] <- c(b_sample, a_sample, nu, diag(sigma_h), h0, as.numeric(h), as.numeric(w_sample))
+      mcmc[, (j - inits$burnin) %/% inits$thin] <- c(vec(B), L[L_idx], nu, diag(sigma_h), diag(sigma_hf), h0, as.numeric(h), as.numeric(w_sample))
       My_miss[, (j - inits$burnin) %/% inits$thin] <- ymiss_vec
     }
     
@@ -478,8 +507,8 @@ BMFVAR.Student.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
       acount_w <- rep(0,t_max)
     }
   }
-  nameA <- matrix(paste("a", reprow(c(1:K),K), repcol(c(1:K),K), sep = "_"), ncol = K)
-  nameA <- nameA[upper.tri(nameA, diag = F)]
+  nameL <- matrix(paste("L", repcol(c(1:K),r), reprow(c(1:r),K), sep = "_"), ncol = r)
+  nameL <- nameL[L_idx]
   
   if (aggregation == "average" || aggregation == "triangular"){
     y_raw[,idq] <- NA
@@ -489,9 +518,10 @@ BMFVAR.Student.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   
   row.names(mcmc) <- c( paste("B0",c(1:K), sep = ""),
                         sprintf("B%d_%d_%d",reprow(c(1:p),K*K), rep(repcol(c(1:K),K), p), rep(reprow(c(1:K),K), p)),
-                        nameA,
+                        nameL,
                         paste("nu"),
                         paste("sigma_h",c(1:K), sep = ""),
+                        paste("sigma_hf",c(1:r), sep = ""),
                         paste("lh0",c(1:K), sep = ""),
                         sprintf("h_%d_%d", repcol(c(1:K),t_max), reprow(c(1:t_max),K)),
                         paste("w",c(1:t_max), sep = ""))
@@ -541,16 +571,13 @@ BMFVAR.OT.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   }
   
   # prior B
-  b_prior = prior$b_prior
-  V_b_prior = prior$V_b_prior
+  b_prior = matrix(prior$b_prior, nrow = K)
+  V_b_prior = matrix(diag(prior$V_b_prior), nrow = K)
   # prior sigma
   sigma0_T0 <- prior$sigma_T0
   sigma0_S0 <- prior$sigma_S0
   # prior h0_mean
   h0_mean <- 2 * log(prior$sigma)
-  # prior A
-  a_prior = prior$a_prior
-  V_a_prior = prior$V_a_prior
   # prior nu
   nu_gam_a = prior$nu_gam_a
   nu_gam_b = prior$nu_gam_b
@@ -560,12 +587,9 @@ BMFVAR.OT.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
     inits <- get_init(prior)
   }
   samples <- inits$samples
-  A <- inits$A0
   B <- inits$B0
   h <- inits$h
   sigma_h <- inits$sigma_h
-  
-  V_b_prior_inv <- solve(V_b_prior)
   
   # Multi degrees of freedom
   nu <- inits$nu
@@ -578,7 +602,19 @@ BMFVAR.OT.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   w_sqrt <- sqrt(w)
   
   # new precompute
-  theta.prior.precmean <- V_b_prior_inv %*% b_prior
+  r <- prior$r
+  Vlhyper <- prior$Vlhyper
+  mulhyper <- prior$mulhyper
+  
+  sigma_hf <- diag(rep(1, r)) # Variance of factor
+  n_load <- K*r-r*(r+1)/2
+  L_idx <- c(1:(K*r))[lower.tri(matrix(1, nrow = K, ncol = r))]
+  L <- inits$A0[,1:r]
+  Fmat <- matrix(0, nrow = r, ncol = t_max)
+  
+  hf <- matrix(0, nrow = r, ncol = t_max)
+  hf0 <- rep(0,r)
+  
   S_select <- Make_SectMat(y)
   n_obs <- sum(!is.na(y))
   n_miss <- sum(is.na(y))
@@ -587,7 +623,7 @@ BMFVAR.OT.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   S_miss <- S_select$S_miss
   
   # Output
-  mcmc <- matrix(NA, nrow = m*K + 0.5*K*(K-1) + K + K + K + K*t_max + K*t_max,
+  mcmc <- matrix(NA, nrow = m*K + length(L_idx) + K + K+r + K + K*t_max + K*t_max,
                  ncol = (samples - inits$burnin)%/% inits$thin)
   My_miss <- matrix(NA, nrow = n_miss,
                     ncol = (samples - inits$burnin)%/% inits$thin)
@@ -596,10 +632,10 @@ BMFVAR.OT.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
     
     # # Sample y missing
     H_B <- Make_HB(B, K, p ,t_max)
-    c_B <- Make_cB(y0, B, K, p ,t_max)
-    IA <- kronecker(Diagonal(t_max), as(A,Class = "TsparseMatrix") )
-    c_const <- IA %*% c_B
-    IAH <- IA %*% H_B
+    c_B <- Make_cB(y0, B, K, p ,t_max, LF = as.numeric(L %*% Fmat) )
+    # IA <- kronecker(Diagonal(t_max), Diagonal(K) ) # t_max * K diag
+    c_const <- c_B
+    IAH <- H_B
     G_obs <-  IAH %*% S_obs
     G_miss <-  IAH %*% S_miss
     Wh <- 1/vec(w) * vec(exp(-h))
@@ -622,63 +658,79 @@ BMFVAR.OT.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
     
     yt_vec <- S_obs%*% yobs_vec + S_miss%*% ymiss_vec
     
+    # sample B and L
+    {
+      yt = matrix(yt_vec, nrow = K)
+      y = t(yt)
+      xt <- makeRegressor( y, y0, t_max, K, p)
+      
+      for (ii in 1:K) {
+        if (ii <= r) {
+          if (ii ==1){
+            Zi <- xt
+          } else {
+            Zi <- rbind(xt, Fmat[1:(ii-1),, drop = FALSE])  
+          }
+          
+          iVthetai <- Diagonal(x = 1/c(V_b_prior[ii,], 
+                                       rep(1 / Vlhyper, ii-1)))
+          thetai0 <- c(b_prior[ii,], rep(mulhyper, ii-1))
+          ZiSigi <- Zi %*% Diagonal(t_max, exp(-h[ii,]) / w[ii,] )
+          dthetai <- iVthetai %*% thetai0 + ZiSigi %*% (yt[ii,] - Fmat[ii,])
+        } else {
+          Zi <- rbind(xt, Fmat)
+          iVthetai <- Diagonal(x = 1/c(V_b_prior[ii,], rep(Vlhyper,r)))
+          thetai0 <- c(b_prior[ii,], rep(mulhyper, r))
+          ZiSigi <- Zi %*% Diagonal(t_max, exp(-h[ii,])/ w[ii,] )
+          dthetai <- iVthetai %*% thetai0 + ZiSigi %*% yt[ii,]
+        }
+        
+        Kthetai <- iVthetai + ZiSigi %*% Matrix::t(Zi)
+        CKthetai <- chol(Kthetai)
+        
+        thetai <- backsolve( CKthetai,
+                             backsolve( CKthetai, dthetai,
+                                        upper.tri = T, transpose = T )
+                             + rnorm(m+min(ii-1, r)) )
+        B[ii, ] <- thetai[1:m]
+        if (ii > 1){
+          L[ii, 1:min(ii-1, r)] <- thetai[(m+1):length(thetai)]  
+        }
+        
+      }
+    }
     
-    # Sample B
-    yt = matrix(yt_vec, nrow = K)
-    y = t(yt)
-    xt <- makeRegressor( y, y0, t_max, K, p)
-    
-    # Sample B
-    wt <- as.vector(1/(exp(h/2)*w_sqrt))
-    y.tilde <- as.vector( A %*% yt ) * wt
-    x.tilde <- kronecker( t(xt), A ) * wt
-    theta.prec.chol <- chol( V_b_prior_inv + crossprod(x.tilde) )
-    b_sample <- backsolve( theta.prec.chol,
-                           backsolve( theta.prec.chol, theta.prior.precmean + crossprod( x.tilde, y.tilde ),
-                                      upper.tri = T, transpose = T )
-                           + rnorm(K*m) )
-    B <- matrix(b_sample,K,m)
+    {
+      # Sample f
+      e = matrix((yt - B %*%xt),ncol = 1)
+      Xf <- kronecker(Diagonal(t_max), L)
+      XfiSig <- Matrix::t(Xf) %*% Diagonal(t_max*K, exp(-h)/w )
+      Kf <- Diagonal(t_max*r, exp(-hf)) + XfiSig %*% Xf
+      CKf <- chol(Kf)
+      f <- backsolve( CKf,
+                      backsolve( CKf, XfiSig %*% e,
+                                 upper.tri = T, transpose = T )
+                      + rnorm(t_max*r) )
+      Fmat <- matrix(f, r, t_max)
+    }
     
     # Sample vol
-    ytilde <- (A %*% (yt - B %*% xt)) / w_sqrt
+    ytilde <- (yt - B %*%xt - L %*% Fmat)/w_sqrt
     aux <- sample_h_ele(ytilde = ytilde, sigma_h = sigma_h, h0_mean = h0_mean, h = h, K = K, t_max = t_max, prior = prior)
     h <- aux$Sigtdraw
     h0 <- as.numeric(aux$h0)
     sqrtvol <- aux$sigt
     sigma_h <- aux$sigma_h
     
-    # for (i in c(1:K)){
-    #   svdraw[[i]] <- svsample2(ytilde[i,], startpara = para(svdraw[[i]]),
-    #                            startlatent = latent(svdraw[[i]]), priormu = priormu,
-    #                            priorphi = priorphi, priorsigma = priorsigma)
-    #   paravol[i,] <- para(svdraw[[i]])
-    #   h[i,] <- as.numeric(latent(svdraw[[i]]))
-    # }
-    # sqrtvol <- exp(h/2)
-    
-    # Sample A0
-    u_std <- (yt - B %*%xt) # change from Gaussian
-    u_neg <- - u_std
-    a_sample <- rep(0, K * (K - 1) /2)
-    if (K > 1) {
-      for (i in c(2:K)){
-        id_end <- i*(i-1)/2
-        id_start <- id_end - i + 2
-        a_sub <- a_prior[id_start:id_end]
-        V_a_sub <- V_a_prior[id_start:id_end, id_start:id_end]
-        a_sample[c(id_start:id_end)] <- sample_A_ele(ysub = u_std[i,] / sqrtvol[i,] / w_sqrt[i,],
-                                                     xsub = matrix(u_neg[1:(i-1),] / reprow(sqrtvol[i,],i-1) / reprow(w_sqrt[i,], i-1), nrow = i-1),
-                                                     a_sub = a_sub,
-                                                     V_a_sub = V_a_sub)
-      }
-    }
-    A_post <- matrix(0, nrow = K, ncol = K)
-    A_post[upper.tri(A)] <- a_sample
-    A <- t(A_post)
-    diag(A) <- 1
+    aux <- sample_h_ele(ytilde = Fmat, sigma_h = sigma_hf, h0_mean = rep(0,r), 
+                        h = hf, K = r, t_max = t_max, prior = prior)
+    hf <- aux$Sigtdraw
+    hf0 <- as.numeric(aux$h0)
+    sqrtvolf <- aux$sigt
+    sigma_hf <- aux$sigma_h
     
     # Sample w
-    u <-  A %*% (yt - B %*%xt)
+    u <-  yt - B %*%xt - L %*% Fmat
     w <- matrix( rinvgamma( n = K*t_max, shape = nu*0.5 + 1*0.5, rate = nu*0.5 + 0.5 * (u^2) / exp(h) ),
                  K, t_max )
     w_sqrt <- sqrt(w)
@@ -716,7 +768,7 @@ BMFVAR.OT.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
     }
     
     if ((j > inits$burnin) & (j %% inits$thin == 0)){
-      mcmc[, (j - inits$burnin) %/% inits$thin] <- c(b_sample, a_sample, nu, diag(sigma_h), h0, as.numeric(h), as.numeric(w))
+      mcmc[, (j - inits$burnin) %/% inits$thin] <- c(vec(B), L[L_idx], nu, diag(sigma_h), diag(sigma_hf), h0, as.numeric(h), as.numeric(w))
       My_miss[, (j - inits$burnin) %/% inits$thin] <- ymiss_vec
     }
     
@@ -725,8 +777,8 @@ BMFVAR.OT.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
       acount_w <- rep(0,t_max)
     }
   }
-  nameA <- matrix(paste("a", reprow(c(1:K),K), repcol(c(1:K),K), sep = "_"), ncol = K)
-  nameA <- nameA[upper.tri(nameA, diag = F)]
+  nameL <- matrix(paste("L", repcol(c(1:K),r), reprow(c(1:r),K), sep = "_"), ncol = r)
+  nameL <- nameL[L_idx]
   
   if (aggregation == "average" || aggregation == "triangular"){
     y_raw[,idq] <- NA
@@ -736,9 +788,10 @@ BMFVAR.OT.FSV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   
   row.names(mcmc) <- c( paste("B0",c(1:K), sep = ""),
                         sprintf("B%d_%d_%d",reprow(c(1:p),K*K), rep(repcol(c(1:K),K), p), rep(reprow(c(1:K),K), p)),
-                        nameA,
+                        nameL,
                         paste("nu",c(1:K), sep = ""),
                         paste("sigma_h",c(1:K), sep = ""),
+                        paste("sigma_hf",c(1:r), sep = ""),
                         paste("lh0",c(1:K), sep = ""),
                         sprintf("h_%d_%d", repcol(c(1:K),t_max), reprow(c(1:t_max),K)),
                         sprintf("w_%d_%d", repcol(c(1:K),t_max), reprow(c(1:t_max),K)))
