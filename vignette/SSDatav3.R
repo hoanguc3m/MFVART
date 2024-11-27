@@ -151,4 +151,40 @@ abline(a = 0, b = 1)
 plot(apply((Chain7$mcmc$y_miss), 2, mean),
      apply(Chain10$mcmc$y_miss, 2, mean))
 
+
+plot(apply(get_post(Chain7$mcmc$param, element = "B"), 2, mean),
+     apply(get_post(Chain10$mcmc$param, element = "B"), 2, mean))
+abline(a = 0, b = 1)
+plot(apply((Chain7$mcmc$y_miss), 2, mean),
+     apply(Chain10$mcmc$y_miss, 2, mean))
+
+
+plot(apply(get_post(Chain5$mcmc$param, element = "B"), 2, mean),
+     apply(get_post(Chain8$mcmc$param, element = "B"), 2, mean))
+abline(a = 0, b = 1)
+plot(apply((Chain5$mcmc$y_miss), 2, mean),
+     apply(Chain8$mcmc$y_miss, 2, mean))
+
+plot(apply((Chain8$mcmc$y_miss), 2, mean),
+     apply(Chain6$mcmc$y_miss, 2, mean))
+
+
+plot(Chain1)
+plot(Chain5)
+plot(Chain8)
+
+plot(Chain2)
+plot(Chain6)
+plot(Chain9)
+
+plot(Chain3)
+plot(Chain7)
+plot(Chain10)
+
+c(Chain5$esttime, Chain6$esttime, Chain7$esttime)
+c(Chain8$esttime, Chain9$esttime, Chain10$esttime)
+
+colMeans(get_post(Chain7$mcmc$param, element = "nu"))
+colMeans(get_post(Chain10$mcmc$param, element = "nu"))
+
 save.image("/home/hoanguc3m/MEGA/WP16/RData/03SSv3.RData")

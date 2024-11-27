@@ -125,7 +125,7 @@ abline(a = 0, b = 1)
 
 
 prior <- get_prior(y, p = p, dist="Gaussian", SV = T, 
-                   aggregation = "triangular", idq = c(9), r = 4)
+                   aggregation = "triangular", idq = c(9,10,11), r = 4)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain8 <- BMFVAR.FSV(y, K = K, p = p, dist = "Gaussian", y0 = y0, prior = prior, inits = inits)
 
@@ -136,7 +136,7 @@ plot(apply((Chain5$mcmc$y_miss), 2, mean),
      apply(Chain8$mcmc$y_miss, 2, mean))
 
 prior <- get_prior(y, p = p, dist="Student", SV = T, 
-                   aggregation = "triangular", idq = c(9), r = 4)
+                   aggregation = "triangular", idq = c(9,10,11), r = 4)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain9 <- BMFVAR.FSV(y, K = K, p = p, dist = "Student", y0 = y0, prior = prior, inits = inits)
 plot(apply(get_post(Chain6$mcmc$param, element = "B"), 2, mean),
@@ -146,7 +146,7 @@ plot(apply((Chain6$mcmc$y_miss), 2, mean),
      apply(Chain9$mcmc$y_miss, 2, mean))
 
 prior <- get_prior(y, p = p, dist="OT", SV = T, 
-                   aggregation = "triangular", idq = c(9), r = 4)
+                   aggregation = "triangular", idq = c(9,10,11), r = 4)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain10 <- BMFVAR.FSV(y, K = K, p = p, dist = "OT", y0 = y0, prior = prior, inits = inits)
 plot(apply(get_post(Chain7$mcmc$param, element = "B"), 2, mean),
@@ -155,4 +155,43 @@ abline(a = 0, b = 1)
 plot(apply((Chain7$mcmc$y_miss), 2, mean),
      apply(Chain10$mcmc$y_miss, 2, mean))
 
+plot(Chain1, element = "y_9")
+plot(Chain5, element = "y_9")
+plot(Chain8, element = "y_9")
+
+plot(Chain2, element = "y_9")
+plot(Chain6, element = "y_9")
+plot(Chain9, element = "y_9")
+
+plot(Chain3, element = "y_9")
+plot(Chain7, element = "y_9")
+plot(Chain10, element = "y_9")
+
+c(Chain5$esttime, Chain6$esttime, Chain7$esttime)
+c(Chain8$esttime, Chain9$esttime, Chain10$esttime)
+
 save.image("/home/hoanguc3m/MEGA/WP16/RData/03SSv2.RData")
+
+plot(Chain1, element = "y_10")
+plot(Chain5, element = "y_10")
+plot(Chain8, element = "y_10")
+
+plot(Chain2, element = "y_10")
+plot(Chain6, element = "y_10")
+plot(Chain9, element = "y_10")
+
+plot(Chain3, element = "y_10")
+plot(Chain7, element = "y_10")
+plot(Chain10, element = "y_10")
+
+plot(Chain1, element = "y_11")
+plot(Chain5, element = "y_11")
+plot(Chain8, element = "y_11")
+
+plot(Chain2, element = "y_11")
+plot(Chain6, element = "y_11")
+plot(Chain9, element = "y_11")
+
+plot(Chain3, element = "y_11")
+plot(Chain7, element = "y_11")
+plot(Chain10, element = "y_11")

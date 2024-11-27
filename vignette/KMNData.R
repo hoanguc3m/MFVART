@@ -37,7 +37,7 @@ K = 5
 t_max <- nrow(y)
 vars::VARselect( na.omit(y))
 
-# load("/home/hoanguc3m/MEGA/WP16/RData/03SMN.RData")
+# load("/home/hoanguc3m/MEGA/WP16/RData/03KMN.RData")
 # head(y)
 library(MFVART)
 
@@ -108,17 +108,14 @@ plot(apply(Chain6$mcmc$param, MARGIN = 2, FUN = median)[c(1:40,42:46)],
 abline(a = 0, b = 1)
 
 # save.image("/home/hoanguc3m/MEGA/WP16/RData/03KMN.RData")
+############################################
 
 prior <- get_prior(y, p = p, dist="Gaussian", SV = T, 
                    aggregation = "triangular", idq = c(5), r = 2)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain8 <- BMFVAR.FSV(y, K = K, p = p, dist = "Gaussian", y0 = y0, prior = prior, inits = inits)
 
-plot(apply(get_post(Chain5$mcmc$param, element = "B"), 2, mean),
-     apply(get_post(Chain8$mcmc$param, element = "B"), 2, mean))
-abline(a = 0, b = 1)
-plot(apply((Chain5$mcmc$y_miss), 2, mean),
-     apply(Chain8$mcmc$y_miss, 2, mean))
+
 
 prior <- get_prior(y, p = p, dist="Student", SV = T, 
                    aggregation = "triangular", idq = c(5), r = 2)
@@ -140,5 +137,36 @@ plot(apply(get_post(Chain7$mcmc$param, element = "B"), 2, mean),
 abline(a = 0, b = 1)
 plot(apply((Chain7$mcmc$y_miss), 2, mean),
      apply(Chain10$mcmc$y_miss, 2, mean))
+
+
+plot(apply(get_post(Chain5$mcmc$param, element = "B"), 2, mean),
+     apply(get_post(Chain8$mcmc$param, element = "B"), 2, mean))
+abline(a = 0, b = 1)
+plot(apply((Chain5$mcmc$y_miss), 2, mean),
+     apply(Chain8$mcmc$y_miss, 2, mean))
+
+plot(apply((Chain8$mcmc$y_miss), 2, mean),
+     apply(Chain6$mcmc$y_miss, 2, mean))
+
+
+plot(Chain1)
+plot(Chain5)
+plot(Chain8)
+
+plot(Chain2)
+plot(Chain6)
+plot(Chain9)
+
+plot(Chain3)
+plot(Chain7)
+plot(Chain10)
+
+c(Chain5$esttime, Chain6$esttime, Chain7$esttime)
+c(Chain8$esttime, Chain9$esttime, Chain10$esttime)
+
+colMeans(get_post(Chain7$mcmc$param, element = "nu"))
+colMeans(get_post(Chain10$mcmc$param, element = "nu"))
+
+colMeans(get_post(Chain10$mcmc$param, element = "nu"))
 
 save.image("/home/hoanguc3m/MEGA/WP16/RData/03KMN.RData")
