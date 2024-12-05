@@ -177,10 +177,8 @@ get_prior <- function(y, p, priorStyle = c("Minnesota"),
   if (!(dist %in% c("Gaussian","Student","OT") ))
     stop("dist is not implemented.")
   arguments <- eval(substitute(alist(...)))
-    r <- ifelse(is.null(arguments$r), K-1, arguments$r)
+  r <- ifelse(is.null(arguments$r), K-1, arguments$r)
   
-  arguments <- eval(substitute(alist(...)))
-
   K <- ncol(y)
   M <- K + p*(K^2) # nr of beta parameters
   numa <- 0.5*K*(K-1) # nr of VCV elements

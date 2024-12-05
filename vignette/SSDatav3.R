@@ -1,7 +1,7 @@
 library(fredr)
-setwd("/home/hoanguc3m/Dropbox/WP16/Code/MFVART/vignette/")
+setwd("/home/hoanguc3m/Dropbox/WP16/Code/MFVART/Data/")
 Monthly <- read.csv("FredMD2024-10.csv")
-Quarterly <- read.csv("FeadQD2024-10.csv")
+Quarterly <- read.csv("FredQD2024-10.csv")
 # Remove Transform:,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,2,2,2,5,5,2,2,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,1,2,1,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,2,6,6,5,6,6,7,6,6,6,2,5,2,5,2,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,2,6,6,6,1
 
 lag <- 12
