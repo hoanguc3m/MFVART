@@ -5,7 +5,14 @@ metrics <- function(Y_obs_i_j, Y_sim_i_j){
   Quantile <- quantile(Y_sim_i_j, probs = c(0.05,0.10,0.5,0.90, 0.95))
   emp_CDF <- ecdf(x = Y_sim_i_j)(Y_obs_i_j)
   predict_den <- stats::density(Y_sim_i_j, adjust = 1)
-  appximate_density <- smooth.spline(x = predict_den$x, y = log(predict_den$y))
+  
+  id <- which(predict_den$y == 0);
+      if (length(id)>0) {
+        for (fix in id){
+          predict_den$y[fix] <- mean(predict_den$y[(fix-1):(fix+1)])
+        }
+      }
+  appximate_density <- smooth.spline(x = predict_den$x, y = log(predict_den$y), df = 4)
   log_ps1 <- - predict(appximate_density, Y_obs_i_j)$y # Smaller is better
   log_ps2 <- - dnorm(x = Y_obs_i_j, log = TRUE, 
                      mean = mean(Y_sim_i_j), sd = sd(Y_sim_i_j)) # Smaller is better
