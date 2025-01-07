@@ -1,7 +1,14 @@
 library(fredr)
-setwd("/home/hoanguc3m/Dropbox/WP16/Code/MFVART/vignette/")
-Monthly <- read.csv("FredMD2024-10.csv")
-Quarterly <- read.csv("FeadQD2024-10.csv")
+setwd("/home/hoanguc3m/Dropbox/WP16/Code/MFVART/Data/")
+DatM_name <- "FredQD2024-10.csv"
+DatQ_name <- "FredMD2024-10.csv"
+headers <- read.csv(DatM_name, header = F, nrows = 1, as.is = T)
+Monthly <- read.csv(DatM_name, skip = 2, header = F)
+colnames(Monthly) <- headers
+
+headers <- read.csv(DatQ_name, header = F, nrows = 1, as.is = T)
+Quarterly <- read.csv(DatQ_name, skip = 3, header = F)
+colnames(Quarterly) <- headers
 # Remove Transform:,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,2,2,2,5,5,2,2,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,1,2,1,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,2,6,6,5,6,6,7,6,6,6,2,5,2,5,2,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,2,6,6,6,1
 
 lag <- 1

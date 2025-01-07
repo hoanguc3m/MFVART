@@ -1,7 +1,14 @@
 library(fredr)
 setwd("/home/hoanguc3m/Dropbox/WP16/Code/MFVART/Data/")
-Monthly <- read.csv("FredMD2024-10.csv")
-Quarterly <- read.csv("FredQD2024-10.csv")
+DatM_name <- "FredQD2024-10.csv"
+DatQ_name <- "FredMD2024-10.csv"
+headers <- read.csv(DatM_name, header = F, nrows = 1, as.is = T)
+Monthly <- read.csv(DatM_name, skip = 2, header = F)
+colnames(Monthly) <- headers
+
+headers <- read.csv(DatQ_name, header = F, nrows = 1, as.is = T)
+Quarterly <- read.csv(DatQ_name, skip = 3, header = F)
+colnames(Quarterly) <- headers
 # Remove Transform:,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,2,2,2,5,5,2,2,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,1,2,1,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,2,6,6,5,6,6,7,6,6,6,2,5,2,5,2,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,2,6,6,6,1
 
 lag <- 1
@@ -75,6 +82,7 @@ apply(Chain3$mcmc$param, MARGIN = 2, FUN = median)[46:50]
 prior <- get_prior(y, p = p, dist="Gaussian", SV = T, aggregation = "triangular", idq = c(5))
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
+# prior$sdeviation <- 0.01
 Chain5 <- BMFVAR.SV(y, K = K, p = p, dist = "Gaussian", y0 = y0, prior = prior, inits = inits)
 
 prior <- get_prior(y, p = p, dist="Student", SV = T, aggregation = "triangular", idq = c(5))
