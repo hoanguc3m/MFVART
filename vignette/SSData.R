@@ -1,7 +1,7 @@
 library(fredr)
 setwd("/home/hoanguc3m/Dropbox/WP16/Code/MFVART/Data/")
-DatM_name <- "FredQD2024-10.csv"
-DatQ_name <- "FredMD2024-10.csv"
+DatM_name <- "FredMD2024-10.csv"
+DatQ_name <- "FredQD2024-10.csv"
 headers <- read.csv(DatM_name, header = F, nrows = 1, as.is = T)
 Monthly <- read.csv(DatM_name, skip = 2, header = F)
 colnames(Monthly) <- headers
@@ -22,7 +22,7 @@ IP <- diff(log(Monthly$INDPRO), lag = lag) * 100
 PCE <- diff(log(Monthly$PCEPI), lag = lag) * 100
 FF <- diff(Monthly$FEDFUNDS, lag = lag)
 TB <- diff(Monthly$GS10, lag = lag)
-SP500 <- diff(log(Monthly$S.P.500), lag = lag) * 100
+SP500 <- diff(log(Monthly$`S&P 500`), lag = lag) * 100
 
 Monthly <- data.frame(Time = Time, 
                       UNR = UNR, HRS = HRS, CPI = CPI,

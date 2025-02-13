@@ -28,7 +28,8 @@ Depends:
     truncnorm,
     magic,
     tmvnsim,
-    GIGrvg
+    GIGrvg,
+    rugarch
 LinkingTo: Rcpp, RcppArmadillo
 RoxygenNote: 7.3.2
 Suggests: knitr,

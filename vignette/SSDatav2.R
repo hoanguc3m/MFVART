@@ -1,7 +1,11 @@
 library(fredr)
+library(RhpcBLASctl)
+library(parallel)
+blas_set_num_threads(8)
+
 setwd("/home/hoanguc3m/Dropbox/WP16/Code/MFVART/Data/")
-DatM_name <- "FredQD2024-10.csv"
-DatQ_name <- "FredMD2024-10.csv"
+DatM_name <- "FredMD2024-10.csv"
+DatQ_name <- "FredQD2024-10.csv"
 headers <- read.csv(DatM_name, header = F, nrows = 1, as.is = T)
 Monthly <- read.csv(DatM_name, skip = 2, header = F)
 colnames(Monthly) <- headers
@@ -22,7 +26,7 @@ IP <- diff(log(Monthly$INDPRO), lag = lag) * 100
 PCE <- diff(log(Monthly$PCEPI), lag = lag) * 100
 FF <- Monthly$FEDFUNDS[(lag+1):t_max]
 TB <- Monthly$GS10[(lag+1):t_max]
-SP500 <- tail(diff(log(Monthly$S.P.500), lag = 1) * 100, t_max-lag)
+SP500 <- tail(diff(log(Monthly$`S&P 500`), lag = 1) * 100, t_max-lag)
 
 Monthly <- data.frame(Time = Time, 
                       UNR = UNR, HRS = HRS, CPI = CPI,

@@ -3,13 +3,14 @@
 
 #' @export
 get_prior_minnesota <- function(y, p, intercept=TRUE, idq = ncol(y),...){
-  # lambda1=0.2, lambda2=0.5, lambda3=1, lambda4=2
+  # lambda1=0.5; lambda2=0.2; lambda3=1; lambda4=2; lambda5 = 0.1;
   arguments <- eval(substitute(alist(...)))
   lambda1 <- ifelse(is.null(arguments$lambda1), 0.5, arguments$lambda1)
   lambda2 <- ifelse(is.null(arguments$lambda2), 0.2, arguments$lambda2)
   lambda3 <- ifelse(is.null(arguments$lambda3), 1, arguments$lambda3)
   lambda4 <- ifelse(is.null(arguments$lambda4), 2, arguments$lambda4)
   lambda5 <- ifelse(is.null(arguments$lambda5), 0.05, arguments$lambda5)
+  scalefactor <- lambda5/ lambda1
   
 
   t_max <- nrow(y)
@@ -84,13 +85,19 @@ get_prior_minnesota <- function(y, p, intercept=TRUE, idq = ncol(y),...){
 
         if(ii==kk){
           if (ii %in% idq){
-            Vi[indx] <- lambda5/(jj^lambda4)
+            Vi[indx] <- lambda5/(jj^lambda4) # lambda1 * scalefactor /(jj^lambda4)
           } else {
             Vi[indx] <- lambda1/(jj^lambda4)
           }
           
         } else{
-          Vi[indx] <- (lambda2)/(jj ^ lambda4) *(sigmasq[ii] / sigmasq[kk])
+          if (ii %in% idq){
+            Vi[indx] <- (lambda2 )/(jj ^ lambda4) *(sigmasq[ii] / sigmasq[kk])  
+          }
+          else{
+            Vi[indx] <- (lambda2)/(jj ^ lambda4) *(sigmasq[ii] / sigmasq[kk])  
+          }
+          
         }
       }
     }
@@ -174,7 +181,7 @@ get_prior <- function(y, p, priorStyle = c("Minnesota"),
                       dist = c("Gaussian"),
                       SV = FALSE, aggregation = "identity", 
                       idq = ncol(y), ...){
-  if (!(dist %in% c("Gaussian","Student","OT") ))
+  if (!(dist %in% c("Gaussian","Student","OT","cG") ))
     stop("dist is not implemented.")
   arguments <- eval(substitute(alist(...)))
   r <- ifelse(is.null(arguments$r), K-1, arguments$r)
@@ -224,6 +231,7 @@ get_prior <- function(y, p, priorStyle = c("Minnesota"),
   prior_collect$r <- r
   prior_collect$Vlhyper <- 1 
   prior_collect$mulhyper <- 0 
+  prior_collect$ymiss_prior <- Inf
   
   if (SV) {
     prior_collect$sigma_h <- 1;
@@ -246,7 +254,7 @@ get_prior <- function(y, p, priorStyle = c("Minnesota"),
 get_init <- function(prior, samples = 1100, burnin = 100, thin = 1){
   dist = prior$dist
   if (!(dist %in% c("Gaussian","Student",
-                    "MT","OT") ))
+                    "MT","OT","cG") ))
     stop("dist is not implemented.")
 
   SV = prior$SV

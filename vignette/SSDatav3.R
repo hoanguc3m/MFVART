@@ -1,7 +1,11 @@
 library(fredr)
+library(RhpcBLASctl)
+library(parallel)
+blas_set_num_threads(16)
+
 setwd("/home/hoanguc3m/Dropbox/WP16/Code/MFVART/Data/")
-DatM_name <- "FredQD2024-10.csv"
-DatQ_name <- "FredMD2024-10.csv"
+DatM_name <- "FredMD2024-10.csv"
+DatQ_name <- "FredQD2024-10.csv"
 headers <- read.csv(DatM_name, header = F, nrows = 1, as.is = T)
 Monthly <- read.csv(DatM_name, skip = 2, header = F)
 colnames(Monthly) <- headers
@@ -22,7 +26,7 @@ IP <- diff(log(Monthly$INDPRO), lag = lag) * 100
 PCE <- diff(log(Monthly$PCEPI), lag = lag) * 100
 FF <- Monthly$FEDFUNDS[(lag+1):t_max]
 TB <- Monthly$GS10[(lag+1):t_max]
-SP500 <- tail(diff(log(Monthly$S.P.500), lag = 1) * 100, t_max-lag)
+SP500 <- tail(diff(log(Monthly$`S&P 500`), lag = 1) * 100, t_max-lag)
 
 Monthly <- data.frame(Time = Time, 
                       UNR = UNR, HRS = HRS, CPI = CPI,
@@ -59,32 +63,32 @@ prior <- get_prior(y, p = p, dist="Gaussian", SV = F, aggregation = "triangular"
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain1 <- BMFVAR.novol(y, K = K, p = p, dist = "Gaussian", y0 = y0, prior = prior, inits = inits)
-2*9*9+9
-B <- matrix(apply(Chain1$mcmc$param, MARGIN = 2, FUN = median)[1:171], nrow = 9)
-A = diag(1, K, K)
-2*9*9+9+8*9/2
-A[upper.tri(A, diag=FALSE)] <- apply(Chain1$mcmc$param, MARGIN = 2, FUN = median)[172:207]
-A <- t(A)
-A_inv <- solve(A)
-A_inv %*% t(A_inv)
+# 2*9*9+9
+# B <- matrix(apply(Chain1$mcmc$param, MARGIN = 2, FUN = median)[1:171], nrow = 9)
+# A = diag(1, K, K)
+# 2*9*9+9+8*9/2
+# A[upper.tri(A, diag=FALSE)] <- apply(Chain1$mcmc$param, MARGIN = 2, FUN = median)[172:207]
+# A <- t(A)
+# A_inv <- solve(A)
+# A_inv %*% t(A_inv)
 
 prior <- get_prior(y, p = p, dist="Student", SV = F, aggregation = "triangular", idq = c(9))
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain2 <- BMFVAR.novol(y, K = K, p = p, dist = "Student", y0 = y0, prior = prior, inits = inits)
-apply(Chain2$mcmc$param, MARGIN = 2, FUN = median)[1:217]
-plot(apply(Chain1$mcmc$param, MARGIN = 2, FUN = median)[1:216],
-     apply(Chain2$mcmc$param, MARGIN = 2, FUN = median)[1:216])
-abline(a = 0, b = 1)
+# apply(Chain2$mcmc$param, MARGIN = 2, FUN = median)[1:217]
+# plot(apply(Chain1$mcmc$param, MARGIN = 2, FUN = median)[1:216],
+#      apply(Chain2$mcmc$param, MARGIN = 2, FUN = median)[1:216])
+# abline(a = 0, b = 1)
 
 prior <- get_prior(y, p = p, dist="OT", SV = F, aggregation = "triangular", idq = c(9))
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain3 <- BMFVAR.novol(y, K = K, p = p, dist = "OT", y0 = y0, prior = prior, inits = inits)
-apply(Chain3$mcmc$param, MARGIN = 2, FUN = median)[1:225]
-plot(apply(Chain3$mcmc$param, MARGIN = 2, FUN = median)[1:216],
-     apply(Chain2$mcmc$param, MARGIN = 2, FUN = median)[1:216])
-abline(a = 0, b = 1)
+# apply(Chain3$mcmc$param, MARGIN = 2, FUN = median)[1:225]
+# plot(apply(Chain3$mcmc$param, MARGIN = 2, FUN = median)[1:216],
+#      apply(Chain2$mcmc$param, MARGIN = 2, FUN = median)[1:216])
+# abline(a = 0, b = 1)
 
 ############################################
 prior <- get_prior(y, p = p, dist="Gaussian", SV = T, aggregation = "triangular", idq = c(9))
@@ -96,17 +100,17 @@ prior <- get_prior(y, p = p, dist="Student", SV = T, aggregation = "triangular",
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain6 <- BMFVAR.SV(y, K = K, p = p, dist = "Student", y0 = y0, prior = prior, inits = inits)
-apply(Chain6$mcmc$param, MARGIN = 2, FUN = median)[1:217]
-plot(apply(Chain5$mcmc$param, MARGIN = 2, FUN = median)[1:216],
-     apply(Chain6$mcmc$param, MARGIN = 2, FUN = median)[c(1:207,209:217)])
-abline(a = 0, b = 1)
+# apply(Chain6$mcmc$param, MARGIN = 2, FUN = median)[1:217]
+# plot(apply(Chain5$mcmc$param, MARGIN = 2, FUN = median)[1:216],
+#      apply(Chain6$mcmc$param, MARGIN = 2, FUN = median)[c(1:207,209:217)])
+# abline(a = 0, b = 1)
 
 
 prior <- get_prior(y, p = p, dist="OT", SV = T, aggregation = "triangular", idq = c(9))
 inits <- get_init(prior)
 inits <- get_init(prior, samples = 60000, burnin = 10000, thin = 10)
 Chain7 <- BMFVAR.SV(y, K = K, p = p, dist = "OT", y0 = y0, prior = prior, inits = inits)
-apply(Chain7$mcmc$param, MARGIN = 2, FUN = median)[208:216]
+# apply(Chain7$mcmc$param, MARGIN = 2, FUN = median)[208:216]
 # nu1       nu2       nu3       nu4       nu5       nu6       nu7       nu8       nu9 
 # 8.943433  4.304081 17.078660 15.892999 21.904866 19.264408 29.184085  3.198617 19.840666 
 

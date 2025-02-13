@@ -23,7 +23,7 @@
 #' }
 BMFVAR.SV <- function(y, K, p, dist, y0 = NULL, prior = NULL, inits = NULL){
   if (!(dist %in% c("Gaussian","Student",
-                    "MT","OT") ))
+                    "MT","OT","cG") ))
     stop("dist is not implemented.")
   if (prior$SV == TRUE){
     Start = Sys.time()
@@ -31,6 +31,7 @@ BMFVAR.SV <- function(y, K, p, dist, y0 = NULL, prior = NULL, inits = NULL){
     if (dist == "Student") Chain <- BMFVAR.Student.SV(y, K, p, y0, prior, inits)
     if (dist == "MT") Chain <- BMFVAR.MT.SV(y, K, p, y0, prior, inits)
     if (dist == "OT") Chain <- BMFVAR.OT.SV(y, K, p, y0, prior, inits)
+    if (dist == "cG") Chain <- BMFVAR.cG.SV(y, K, p, y0, prior, inits)
     elapsedTime = Sys.time() - Start
     print(elapsedTime)
     out <- list(mcmc = Chain,
@@ -66,6 +67,7 @@ BMFVAR.Gaussian.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   aggregation <- prior$aggregation
   idq <- prior$idq
   sdeviation <- prior$sdeviation
+  ymiss_invprior <- 1/prior$ymiss_prior
   
   if (aggregation == "identity"){
     yt_vec <- vec(t(y))
@@ -121,6 +123,8 @@ BMFVAR.Gaussian.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   n_cond <- length(y_raw[,idq]) - sum(is.na(y_raw[,idq]))
   S_obs <- S_select$S_obs
   S_miss <- S_select$S_miss
+  K_prior_y_miss <- Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% M_aggregate + Diagonal(n_miss, ymiss_invprior)
+  b_prior_y_miss <- Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% ( z_obs_vec)
   
   # Output
   mcmc <- matrix(NA, nrow = m*K + 0.5*K*(K-1) + K + K + K*t_max,
@@ -148,15 +152,17 @@ BMFVAR.Gaussian.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
                                                upper.tri = T, transpose = T ) + rnorm(n_miss) ) 
     }
     if (aggregation == "average" || aggregation == "triangular"){
-      K_bar_y_miss <- K_y_miss + Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% M_aggregate
-      b_bar_y_miss <- b_y_miss + Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% ( z_obs_vec)
+      K_bar_y_miss <- K_y_miss + K_prior_y_miss
+      b_bar_y_miss <- b_y_miss + b_prior_y_miss
       U.chol <- Matrix::chol( K_bar_y_miss )
       ymiss_vec <- backsolve(U.chol, backsolve(U.chol, b_bar_y_miss,
                                                upper.tri = T, transpose = T ) + rnorm(n_miss) ) 
     }
     
     yt_vec <- S_obs%*% yobs_vec + S_miss%*% ymiss_vec
-    
+    # Sys.sleep(0.1)
+    # plot(as.numeric(Make_bandSparse(t_max, aggregation="triangular") %*% ymiss_vec)[600:t_max], type ='l')
+
     # sample B
     yt = matrix(yt_vec, nrow = K)
     y = t(yt)
@@ -247,6 +253,7 @@ BMFVAR.Student.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   aggregation <- prior$aggregation
   idq <- prior$idq
   sdeviation <- prior$sdeviation
+  ymiss_invprior <- 1/prior$ymiss_prior
   
   if (aggregation == "identity"){
     yt_vec <- vec(t(y))
@@ -314,6 +321,8 @@ BMFVAR.Student.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   n_cond <- length(y_raw[,idq]) - sum(is.na(y_raw[,idq]))
   S_obs <- S_select$S_obs
   S_miss <- S_select$S_miss
+  K_prior_y_miss <- Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% M_aggregate + Diagonal(n_miss, ymiss_invprior)
+  b_prior_y_miss <- Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% ( z_obs_vec)
   
   # Output
   mcmc <-  matrix(NA, nrow = m*K + 0.5*K*(K-1) + 1 + K + K + K*t_max + t_max,
@@ -343,8 +352,8 @@ BMFVAR.Student.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
                                                upper.tri = T, transpose = T ) + rnorm(n_miss) ) 
     }
     if (aggregation == "average" || aggregation == "triangular"){
-      K_bar_y_miss <- K_y_miss + Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% M_aggregate
-      b_bar_y_miss <- b_y_miss + Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% ( z_obs_vec)
+      K_bar_y_miss <- K_y_miss + K_prior_y_miss
+      b_bar_y_miss <- b_y_miss + b_prior_y_miss
       U.chol <- Matrix::chol( K_bar_y_miss )
       ymiss_vec <- backsolve(U.chol, backsolve(U.chol, b_bar_y_miss,
                                                upper.tri = T, transpose = T ) + rnorm(n_miss) ) 
@@ -479,6 +488,7 @@ BMFVAR.MT.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   aggregation <- prior$aggregation
   idq <- prior$idq
   sdeviation <- prior$sdeviation
+  ymiss_invprior <- 1/prior$ymiss_prior
   
   if (aggregation == "identity"){
     yt_vec <- vec(t(y))
@@ -547,6 +557,8 @@ BMFVAR.MT.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   n_cond <- length(y_raw[,idq]) - sum(is.na(y_raw[,idq]))
   S_obs <- S_select$S_obs
   S_miss <- S_select$S_miss
+  K_prior_y_miss <- Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% M_aggregate + Diagonal(n_miss, ymiss_invprior)
+  b_prior_y_miss <- Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% ( z_obs_vec)
   
   # Output
   mcmc <- matrix(NA, nrow = m*K + 0.5*K*(K-1) + K + K + K + K*t_max + K*t_max,
@@ -577,8 +589,8 @@ BMFVAR.MT.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
                                                upper.tri = T, transpose = T ) + rnorm(n_miss) ) 
     }
     if (aggregation == "average" || aggregation == "triangular"){
-      K_bar_y_miss <- K_y_miss + Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% M_aggregate
-      b_bar_y_miss <- b_y_miss + Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% ( z_obs_vec)
+      K_bar_y_miss <- K_y_miss + K_prior_y_miss
+      b_bar_y_miss <- b_y_miss + b_prior_y_miss
       U.chol <- Matrix::chol( K_bar_y_miss )
       ymiss_vec <- backsolve(U.chol, backsolve(U.chol, b_bar_y_miss,
                                                upper.tri = T, transpose = T ) + rnorm(n_miss) ) 
@@ -741,6 +753,7 @@ BMFVAR.OT.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   aggregation <- prior$aggregation
   idq <- prior$idq
   sdeviation <- prior$sdeviation
+  ymiss_invprior <- 1/prior$ymiss_prior
   
   if (aggregation == "identity"){
     yt_vec <- vec(t(y))
@@ -808,6 +821,8 @@ BMFVAR.OT.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   n_cond <- length(y_raw[,idq]) - sum(is.na(y_raw[,idq]))
   S_obs <- S_select$S_obs
   S_miss <- S_select$S_miss
+  K_prior_y_miss <- Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% M_aggregate + Diagonal(n_miss, ymiss_invprior)
+  b_prior_y_miss <- Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% ( z_obs_vec)
   
   # Output
   mcmc <- matrix(NA, nrow = m*K + 0.5*K*(K-1) + K + K + K + K*t_max + K*t_max,
@@ -836,8 +851,8 @@ BMFVAR.OT.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
                                                upper.tri = T, transpose = T ) + rnorm(n_miss) ) 
     }
     if (aggregation == "average" || aggregation == "triangular"){
-      K_bar_y_miss <- K_y_miss + Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% M_aggregate
-      b_bar_y_miss <- b_y_miss + Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% ( z_obs_vec)
+      K_bar_y_miss <- K_y_miss + K_prior_y_miss
+      b_bar_y_miss <- b_y_miss + b_prior_y_miss
       U.chol <- Matrix::chol( K_bar_y_miss )
       ymiss_vec <- backsolve(U.chol, backsolve(U.chol, b_bar_y_miss,
                                                upper.tri = T, transpose = T ) + rnorm(n_miss) ) 
@@ -971,3 +986,244 @@ BMFVAR.OT.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
   ))
 }
 
+###########################################################################
+#' @export
+BMFVAR.cG.SV <- function(y, K, p, y0 = NULL, prior = NULL, inits = NULL){
+  # Init regressors in the right hand side
+  t_max <- nrow(y)
+  y_raw <- y
+  
+  # Init prior and initial values
+  m = K * p + 1
+  if (is.null(prior)){
+    prior <- get_prior(y, p, priorStyle = "Minnesota", dist = "Gaussian", 
+                       SV = TRUE, aggregation = "identity", idq = K)
+  }
+  
+  aggregation <- prior$aggregation
+  idq <- prior$idq
+  sdeviation <- prior$sdeviation
+  ymiss_invprior <- 1/prior$ymiss_prior
+  
+  if (aggregation == "identity"){
+    yt_vec <- vec(t(y))
+    yobs_vec <- na.exclude(yt_vec)  
+  }
+  
+  if (aggregation == "average" || aggregation == "triangular"){
+    y[,idq] <- NA
+    
+    yt_vec <- vec(t(y))
+    yobs_vec <- na.exclude(yt_vec)  
+    z_obs_vec <- na.exclude(vec(t(y_raw[,idq])))  
+    
+    y_temp <- y
+    y_temp[,idq] <- 0
+    y_temp <- matrix(t(y_temp)[is.na(t(y))], ncol = 1)
+    S_select <- Make_SectMat(y_temp)
+    # Account for the missing in other columns rather than in low freq columns
+    M_aggregate <- kronecker(Make_bandSparse(t_max, aggregation)[!is.na(y_raw[,idq[1] ]),],
+                             Diagonal(length(idq))) %*% Matrix::t(S_select$S_obs)
+  }
+  
+  
+  # prior B
+  b_prior = prior$b_prior
+  V_b_prior = prior$V_b_prior
+  # prior sigma
+  sigma0_T0 <- prior$sigma_T0
+  sigma0_S0 <- prior$sigma_S0
+  # prior h0_mean
+  h0_mean <- mean(2 * log(prior$sigma))
+  # prior A
+  a_prior = prior$a_prior
+  V_a_prior = prior$V_a_prior
+  
+  
+  # Initial values
+  if (is.null(inits)){
+    inits <- get_init(prior)
+  }
+  samples <- inits$samples
+  A <- inits$A0
+  B <- inits$B0
+  h_row <- colMeans(inits$h)*10
+  h <- reprow(h_row, K)
+  
+  sigma_h <- inits$sigma_h[1,1]
+  
+  V_b_prior_inv <- solve(V_b_prior)
+  # new precompute
+  theta.prior.precmean <- V_b_prior_inv %*% b_prior
+  S_select <- Make_SectMat(y)
+  n_obs <- sum(!is.na(y))
+  n_miss <- sum(is.na(y))
+  n_cond <- length(y_raw[,idq]) - sum(is.na(y_raw[,idq]))
+  S_obs <- S_select$S_obs
+  S_miss <- S_select$S_miss
+  K_prior_y_miss <- Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% M_aggregate + Diagonal(n_miss, ymiss_invprior)
+  b_prior_y_miss <- Matrix::t(M_aggregate) %*% Diagonal(n_cond, 1/sdeviation) %*% ( z_obs_vec)
+  Hrho <-  Diagonal(t_max) - Matrix::bandSparse(t_max,t_max, -1,list(rep(1,t_max-1))) # T matrix
+  
+  # Output
+  mcmc <- matrix(NA, nrow = m*K + 0.5*K*(K-1) + 1 + 1 + 1*t_max,
+                 ncol = (samples - inits$burnin)%/% inits$thin)
+  My_miss <- matrix(NA, nrow = n_miss,
+                    ncol = (samples - inits$burnin)%/% inits$thin)
+  
+  for (j in c(1:samples)){
+    
+    # # Sample y missing
+    H_B <- Make_HB(B, K, p ,t_max)
+    c_B <- Make_cB(y0, B, K, p ,t_max)
+    IA <- kronecker(Diagonal(t_max), as(A,Class = "TsparseMatrix") )
+    c_const <- IA %*% c_B
+    IAH <- IA %*% H_B
+    G_obs <-  IAH %*% S_obs
+    G_miss <-  IAH %*% S_miss
+    K_y_miss <- Matrix::t(G_miss) %*% Diagonal(t_max*K, as.vector(exp(-h)) ) %*% G_miss
+    b_y_miss <- Matrix::t(G_miss) %*% Diagonal(t_max*K, as.vector(exp(-h)) ) %*% ( c_const - G_obs %*% yobs_vec)
+    
+    if (aggregation == "identity"){
+      # sample from N( K^-1 b, K^-1)
+      U.chol <- Matrix::chol( K_y_miss )
+      ymiss_vec <- backsolve(U.chol, backsolve(U.chol, b_y_miss,
+                                               upper.tri = T, transpose = T ) + rnorm(n_miss) ) 
+    }
+    if (aggregation == "average" || aggregation == "triangular"){
+      K_bar_y_miss <- K_y_miss + K_prior_y_miss
+      b_bar_y_miss <- b_y_miss + b_prior_y_miss
+      U.chol <- Matrix::chol( K_bar_y_miss )
+      ymiss_vec <- backsolve(U.chol, backsolve(U.chol, b_bar_y_miss,
+                                               upper.tri = T, transpose = T ) + rnorm(n_miss) ) 
+    }
+    
+    yt_vec <- S_obs%*% yobs_vec + S_miss%*% ymiss_vec
+    # Sys.sleep(0.1)
+    # plot(as.numeric(Make_bandSparse(t_max, aggregation="triangular") %*% ymiss_vec)[600:t_max], type ='l')
+    
+    # sample B
+    yt = matrix(yt_vec, nrow = K)
+    y = t(yt)
+    xt <- makeRegressor( y, y0, t_max, K, p)
+    wt <- as.vector(exp(-h/2)) # move up
+    y.tilde <- as.vector( A %*% yt ) * wt
+    x.tilde <- kronecker( t(xt), A ) * wt
+    theta.prec.chol <- chol( V_b_prior_inv + crossprod(x.tilde) )
+    b_sample <- backsolve( theta.prec.chol,
+                           backsolve( theta.prec.chol, theta.prior.precmean + crossprod( x.tilde, y.tilde ),
+                                      upper.tri = T, transpose = T )
+                           + rnorm(K*m) )
+    B <- matrix(b_sample,K,m)
+    
+    # Sample vol
+    ytilde <- A%*% (yt - B %*% xt)
+    s2 <- colSums(ytilde^2)
+    # is_ForcedAccept <- ifelse(j < 20,TRUE,FALSE)
+    
+    {
+      invSh <- Diagonal(t_max,as.numeric(1/sigma_h)) # Sigma_h
+      HiSH <- Matrix::t(Hrho) %*% invSh %*% Hrho
+      errh <- 1
+      ht <- h_row
+      
+      while (errh > 1e-3) {
+        eht <- exp(ht)
+        sieht <- s2 / eht
+        fh <- -K/2 + 0.5 * sieht
+        Gh <- 0.5 * sieht
+        Kh <- HiSH + Matrix::Diagonal(t_max, Gh)
+        newht <- Matrix::solve(Kh, fh + Gh * ht)
+        errh <- max(abs(newht - ht))
+        ht <- newht
+      }
+      
+      CKh <- Matrix::chol(Kh)
+      
+      # AR-step
+      hstar <- ht
+      logc <- -0.5 * t(hstar) %*% HiSH %*% hstar - K/2 * sum(hstar) - 0.5 * sum(exp(-hstar) * s2) + log(3)
+      flag <- 0
+      
+      while (flag == 0) {
+        hc <- ht + Matrix::solve(Matrix::t(CKh), rnorm(t_max))
+        alpARc <- as.numeric(-0.5 * t(hc) %*% HiSH %*% hc - K/2 * sum(hc) - 0.5 * sum(exp(-hc) * s2) +
+          0.5 * t(hc - ht) %*% Kh %*% (hc - ht) - logc)
+        if ( alpARc > log(runif(1))) {
+          flag <- 1
+        }
+      }
+      
+      # MH-step
+      alpAR <- as.numeric( -0.5 * t(h_row) %*% HiSH %*% h_row - K/2 * sum(h_row) - 0.5 * sum(exp(-h_row) * s2) + 
+        0.5 * t(h_row - ht) %*% Kh %*% (h_row - ht) - logc)
+      
+      if (alpAR < 0) {
+        alpMH <- 1
+      } else if (alpARc < 0) {
+        alpMH <- -alpAR
+      } else {
+        alpMH <- alpARc - alpAR
+      }
+      
+      if (alpMH > log(runif(1)) ) {
+      # if (alpMH > log(runif(1)) || is_ForcedAccept) {
+        h_row <- hc
+        h <- reprow(h_row, K)
+        sqrtvol <-  exp(0.5*h)
+        h0 <- h_row[1]
+      }
+      
+    }
+    sse_2 <- sum( (h_row[2:t_max] - h_row[1:(t_max-1)] )^2)
+    sigma_h <- GIGrvg::rgig(n = 1, lambda = - (t_max - 1)*0.5, chi = sse_2,
+                            psi = 1/prior$sigma_S0 )
+    
+    # Sample A0
+    u_std <- (yt - B %*%xt)
+    u_neg <- - u_std
+    a_sample <- rep(0, K * (K - 1) /2)
+    if (K > 1) {
+      for (i in c(2:K)){
+        id_end <- i*(i-1)/2
+        id_start <- id_end - i + 2
+        a_sub <- a_prior[id_start:id_end]
+        V_a_sub <- V_a_prior[id_start:id_end, id_start:id_end]
+        a_sample[c(id_start:id_end)] <- sample_A_ele(ysub = u_std[i,] / sqrtvol[i,],
+                                                     xsub = matrix(u_neg[1:(i-1),] / sqrtvol[i,], nrow = i-1),
+                                                     a_sub = a_sub,
+                                                     V_a_sub = V_a_sub)
+      }
+    }
+    A_post <- matrix(0, nrow = K, ncol = K)
+    A_post[upper.tri(A)] <- a_sample
+    A <- t(A_post)
+    diag(A) <- 1
+    
+    if ((j > inits$burnin) & (j %% inits$thin == 0)){
+      mcmc[, (j - inits$burnin) %/% inits$thin] <- c(b_sample, a_sample, sigma_h, h0, as.numeric(h_row))
+      My_miss[, (j - inits$burnin) %/% inits$thin] <- ymiss_vec
+    }
+    
+    if (j %% 1000 == 0) { cat(" Iteration ", j, " \n")}
+  }
+  nameA <- matrix(paste("a", reprow(c(1:K),K), repcol(c(1:K),K), sep = "_"), ncol = K)
+  nameA <- nameA[upper.tri(nameA, diag = F)]
+  
+  if (aggregation == "average" || aggregation == "triangular"){
+    y_raw[,idq] <- NA
+  }
+  nameY <- matrix(paste("y", repcol(c(1:K),t_max), reprow(c(1:t_max),K), sep = "_"), nrow = K)
+  row.names(My_miss) <- nameY[is.na(t(y_raw))]
+  
+  row.names(mcmc) <- c( paste("B0",c(1:K), sep = ""),
+                        sprintf("B%d_%d_%d",reprow(c(1:p),K*K), rep(repcol(c(1:K),K), p), rep(reprow(c(1:K),K), p)),
+                        nameA,
+                        paste("sigma_h",c(1), sep = ""),
+                        paste("lh0",c(1), sep = ""),
+                        sprintf("h_%d_%d", repcol(c(1),t_max), reprow(c(1:t_max),1))
+  )
+  return(list( param = as.mcmc(t(mcmc)),
+               y_miss = as.mcmc(t(My_miss))
+  ))
+}

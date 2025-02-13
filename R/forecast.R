@@ -5,17 +5,25 @@ metrics <- function(Y_obs_i_j, Y_sim_i_j){
   Quantile <- quantile(Y_sim_i_j, probs = c(0.05,0.10,0.5,0.90, 0.95))
   emp_CDF <- ecdf(x = Y_sim_i_j)(Y_obs_i_j)
   predict_den <- stats::density(Y_sim_i_j, adjust = 1)
-  
+
   id <- which(predict_den$y == 0);
       if (length(id)>0) {
         for (fix in id){
           predict_den$y[fix] <- mean(predict_den$y[(fix-1):(fix+1)])
         }
       }
-  appximate_density <- smooth.spline(x = predict_den$x, y = log(predict_den$y), df = 4)
+  appximate_density <- smooth.spline(x = predict_den$x, y = log(predict_den$y), df = 10)
   log_ps1 <- - predict(appximate_density, Y_obs_i_j)$y # Smaller is better
-  log_ps2 <- - dnorm(x = Y_obs_i_j, log = TRUE, 
-                     mean = mean(Y_sim_i_j), sd = sd(Y_sim_i_j)) # Smaller is better
+  # fitdistrplus::fitdist(Y_sim_i_j, distr = "sstd", 
+  #                       method="mle", start=list(mu = 0, sigma = 1, skew = 1, shape = 5))
+  predict_den_skewt <- rugarch::fitdist(distribution = "sstd", Y_sim_i_j, control=list())
+  log_ps2 <- - log(rugarch::ddist(distribution = "sstd", y = Y_obs_i_j,
+                mu = predict_den_skewt$pars[1],
+                sigma = predict_den_skewt$pars[2],
+                skew = predict_den_skewt$pars[3],
+                shape = predict_den_skewt$pars[4]))
+  # log_ps2 <- - dnorm(x = Y_obs_i_j, log = TRUE, 
+  #                    mean = mean(Y_sim_i_j), sd = sd(Y_sim_i_j)) # Smaller is better
   
   samples1 <- Y_sim_i_j
   samples2 <- sample(samples1, size = length(samples1), replace = T)
