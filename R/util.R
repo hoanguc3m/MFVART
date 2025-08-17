@@ -356,9 +356,9 @@ get_post.MFVART <- function(obj, element = NULL){
   if (is.null(element)) {
     return(obj$mcmc)
   } else {
-    mcmc_name <- substr(colnames(obj$mcmc), start = 1, stop = nchar(element))
+    mcmc_name <- substr(colnames(obj$mcmc$param), start = 1, stop = nchar(element))
     mcmc_id = (mcmc_name == element)
-    return(obj$mcmc[,mcmc_id, drop = FALSE])
+    return(obj$mcmc$param[,mcmc_id, drop = FALSE])
   }
 }
 
